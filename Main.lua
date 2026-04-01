@@ -5,7 +5,7 @@ local UI = loadstring(game:HttpGet("https://raw.githubusercontent.com/phamquocho
 local window = UI:CreateWindow({
     Title = "Apple Hub Premium",
     Subtitle = "| by Quoc Hoa",
-    Image = "rbxassetid://1774948262512"
+    Image = "rbxassetid://1774948259695"
 })
 
 -- ==================== TẠO TAB ====================
