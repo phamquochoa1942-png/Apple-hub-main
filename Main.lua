@@ -101,7 +101,7 @@ function GetQuestByLevel(level)
     return QuestLevels[1]
 end
 
--- ==================== LOGIC BAY (GIỮ NGUYÊN CỦA BẠN) ====================
+-- ==================== LOGIC BAY (GIỮ NGUYÊN) ====================
 local currentTween = nil
 
 function StopTween()
@@ -136,7 +136,7 @@ function TweenToPosition(Position)
     return success
 end
 
--- ==================== NOCLIP (XUYÊN TƯỜNG) ====================
+-- ==================== NOCLIP ====================
 task.spawn(function()
     while true do
         task.wait(0.2)
@@ -155,7 +155,7 @@ task.spawn(function()
     end
 end)
 
--- ==================== ANTI-FALL (CHỐNG BAY KICK) ====================
+-- ==================== ANTI-FALL ====================
 task.spawn(function()
     while true do
         task.wait(0.5)
@@ -173,54 +173,49 @@ task.spawn(function()
     end
 end)
 
--- ==================== AUTO QUEST - FIX LẠI HOÀN TOÀN ====================
+-- ==================== AUTO QUEST CHUẨN 2026 (QUAN TRỌNG - ĐÃ FIX) ====================
 function StartQuest(questData)
-    if not questData then return end
-    
-    pcall(function()
-        -- Tìm remote theo nhiều cách
-        local remote = nil
-        local replicated = game:GetService("ReplicatedStorage")
-        
-        -- Cách 1: Đường dẫn chuẩn
-        if replicated:FindFirstChild("Remotes") then
-            remote = replicated.Remotes:FindFirstChild("CommF_")
-        end
-        
-        -- Cách 2: Tìm trực tiếp
-        if not remote then
-            for _, v in pairs(replicated:GetChildren()) do
-                if v.Name == "CommF_" then
-                    remote = v
-                    break
-                end
-            end
-        end
-        
-        if not remote then
-            print("❌ Không tìm thấy Remote CommF_")
-            return
-        end
-        
-        -- Thử gọi quest theo đúng cú pháp Blox Fruits
-        local success = pcall(function()
-            -- Cú pháp chuẩn: InvokeServer("StartQuest", "TênNPC")
-            remote:InvokeServer("StartQuest", questData.npc)
-        end)
-        
-        if success then
-            print("✅ Đã nhận quest thành công: " .. questData.npc)
-        else
-            -- Thử cách khác: FireServer
-            pcall(function()
-                remote:FireServer("StartQuest", questData.npc)
-                print("✅ Đã FireServer quest: " .. questData.npc)
-            end)
-        end
+    if not questData or not questData.npc then
+        print("❌ Lỗi: Không có dữ liệu NPC để nhận quest.")
+        return
+    end
+
+    -- Đường dẫn đến Remote chính xác nhất
+    local success, remote = pcall(function()
+        return game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):WaitForChild("CommF_")
     end)
+    
+    if not success or not remote then
+        print("❌ Không tìm thấy Remote CommF_")
+        return
+    end
+
+    -- Gọi hàm nhận quest theo đúng cú pháp của game: "StartQuest", Tên_NPC
+    -- Dùng pcall để bắt lỗi, tránh crash script nếu có sự cố mạng
+    local invokeSuccess, result = pcall(function()
+        -- 'result' sẽ trả về 0 nếu thành công, trả về số level yêu cầu nếu thất bại
+        return remote:InvokeServer("StartQuest", questData.npc)
+    end)
+
+    if invokeSuccess then
+        if result == 0 then
+            print("✅ NHẬN QUEST THÀNH CÔNG: " .. questData.npc)
+        elseif type(result) == "number" and result > 0 then
+            print("⚠️ Cần level " .. result .. " để nhận quest " .. questData.npc .. ". Script sẽ tự động chuyển quest khi đủ cấp.")
+        else
+            print("⚠️ Không thể nhận quest " .. questData.npc .. ", có thể đã hoàn thành hoặc đang có quest khác.")
+        end
+    else
+        print("❌ LỖI KẾT NỐI: Không thể gửi yêu cầu nhận quest. Thử cách khác...")
+        -- Thử cách FireServer nếu InvokeServer lỗi
+        pcall(function()
+            remote:FireServer("StartQuest", questData.npc)
+            print("✅ Đã gửi FireServer quest: " .. questData.npc)
+        end)
+    end
 end
 
--- ==================== BRING MOB - FIX KHÔNG MẤT MÁU ====================
+-- ==================== BRING MOB ====================
 task.spawn(function()
     while true do
         task.wait(0.15)
@@ -232,7 +227,6 @@ task.spawn(function()
                 if not hrp then return end
                 
                 local myPos = hrp.Position
-                -- Kéo quái về phía trước mặt, cách 12 studs
                 local targetPos = myPos + (hrp.CFrame.LookVector * 12) + Vector3.new(0, 3, 0)
                 
                 for _, v in pairs(workspace:GetChildren()) do
@@ -241,7 +235,6 @@ task.spawn(function()
                         local enemyHum = v.Humanoid
                         local dist = (enemyHrp.Position - myPos).Magnitude
                         
-                        -- Chỉ kéo quái trong bán kính 20 studs, cách xa 8 studs
                         if enemyHum.Health > 0 and dist <= 20 and dist > 8 then
                             enemyHrp.CFrame = CFrame.new(targetPos)
                             enemyHrp.Velocity = Vector3.new(0, 0, 0)
@@ -259,13 +252,11 @@ task.spawn(function()
         task.wait(_G.AttackDelay)
         if _G.AutoFarm then
             pcall(function()
-                -- Tự động trang bị vũ khí tay không (Melee)
                 local remote = game:GetService("ReplicatedStorage"):FindFirstChild("Remotes")
                 if remote and remote:FindFirstChild("CommF_") then
                     remote.CommF_:FireServer("EquipTool", "Melee")
                 end
                 
-                -- Click chuột trái (M1)
                 VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, 0)
                 task.wait(0.05)
                 VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, game, 0)
@@ -298,7 +289,7 @@ task.spawn(function()
                 TweenToPosition(questData.location)
                 task.wait(0.8)
                 
-                -- 2. Nhận quest
+                -- 2. Nhận quest (phiên bản chuẩn 2026)
                 print("📜 Đang nhận quest từ " .. questData.npc)
                 StartQuest(questData)
                 task.wait(1.5)
@@ -397,7 +388,7 @@ settingGroup:AddSlider({
 -- ==================== HIỂN THỊ UI ====================
 UI.ToggleUI()
 print("=" .. string.rep("=", 40))
-print("✅ Apple Hub Premium - 1-2600 ĐÃ THÊM XONG!")
+print("✅ Apple Hub Premium - AUTO QUEST CHUẨN 2026!")
 print("📌 Hướng dẫn:")
 print("   1. Bấm 'BẬT AUTO FARM'")
 print("   2. Script tự động nhận quest theo level 1-2600")
