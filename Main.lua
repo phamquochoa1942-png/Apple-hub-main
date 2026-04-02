@@ -93,7 +93,7 @@ local QuestLevels = {
     {min = 2526, max = 2600, npc = "DragonCrew", questName = "DragonCrewQuest1", location = Vector3.new(-5374, 309, -5053)},
 }
 
--- ==================== LOGIC 1: AUTO TWEEN & NOCLIP ====================
+-- ==================== HÀM TWEEN MOVE ====================
 function TweenToPosition(Position)
     if not _G.AutoFarm then return end
     pcall(function()
@@ -112,7 +112,7 @@ function TweenToPosition(Position)
     end)
 end
 
--- Noclip + Anti-Fall
+-- ==================== NOCLIP & ANTI-FALL ====================
 task.spawn(function()
     while true do
         task.wait(0.3)
@@ -135,7 +135,7 @@ task.spawn(function()
     end
 end)
 
--- ==================== LOGIC 2: AUTO QUEST ====================
+-- ==================== AUTO QUEST ====================
 function GetQuestByLevel(level)
     for _, q in pairs(QuestLevels) do
         if level >= q.min and level <= q.max then return q end
@@ -150,7 +150,7 @@ function StartQuest(questData)
     end)
 end
 
--- ==================== LOGIC 3: BRING MOB & AUTO ATTACK ====================
+-- ==================== BRING MOB ====================
 task.spawn(function()
     while true do
         task.wait(0.15)
@@ -177,7 +177,7 @@ task.spawn(function()
     end
 end)
 
--- Auto Attack M1
+-- ==================== AUTO ATTACK ====================
 task.spawn(function()
     while true do
         task.wait(_G.AttackDelay)
@@ -212,62 +212,67 @@ task.spawn(function()
     end
 end)
 
--- ==================== UI - TAB FARM ====================
+-- ==================== UI - TAB FARM (DÙNG BUTTON) ====================
 local farmGroup = farmTab:AddLeftGroupbox("🤖 Auto Farm")
 
-farmGroup:AddToggle({
-    Title = "🔥 Auto Farm Level",
-    Subtitle = "Bật để bắt đầu farm (tự nhận quest + đánh quái)",
-    Callback = function(value)
-        _G.AutoFarm = value
-        print("Auto Farm: " .. tostring(value))
+-- Nút bật/tắt Auto Farm (dạng toggle bằng button)
+local autoFarmStatus = "🔴 TẮT"
+farmGroup:AddButton({
+    Title = "▶️ BẬT AUTO FARM",
+    Callback = function()
+        _G.AutoFarm = true
+        autoFarmStatus = "🟢 ĐANG BẬT"
+        print("✅ Auto Farm đã BẬT")
     end
 })
 
-farmGroup:AddToggle({
-    Title = "📦 Bring Mob (Gom Quái)",
-    Subtitle = "Gom quái về một điểm để farm nhanh hơn",
-    Default = true,
-    Callback = function(value)
-        _G.BringMob = value
+farmGroup:AddButton({
+    Title = "⏹️ TẮT AUTO FARM",
+    Callback = function()
+        _G.AutoFarm = false
+        autoFarmStatus = "🔴 ĐANG TẮT"
+        print("⏸️ Auto Farm đã TẮT")
     end
 })
 
-farmGroup:AddLabel("📊 Level hiện tại: " .. (Player.Data.Level.Value or 0))
-
--- Cập nhật label level mỗi giây
-task.spawn(function()
-    while true do
-        task.wait(1)
-        pcall(function()
-            farmGroup:Clear()
-            farmGroup:AddToggle({
-                Title = "🔥 Auto Farm Level",
-                Subtitle = "Bật để bắt đầu farm",
-                Callback = function(value) _G.AutoFarm = value end
-            })
-            farmGroup:AddToggle({
-                Title = "📦 Bring Mob (Gom Quái)",
-                Subtitle = "Gom quái về một điểm",
-                Default = _G.BringMob,
-                Callback = function(value) _G.BringMob = value end
-            })
-            farmGroup:AddLabel("📊 Level hiện tại: " .. (Player.Data.Level.Value or 0))
-        end)
+-- Nút bật/tắt Bring Mob
+farmGroup:AddButton({
+    Title = "📦 BẬT GOM QUÁI (Bring Mob)",
+    Callback = function()
+        _G.BringMob = true
+        print("✅ Bring Mob đã BẬT")
     end
-end)
+})
+
+farmGroup:AddButton({
+    Title = "📦 TẮT GOM QUÁI (Bring Mob)",
+    Callback = function()
+        _G.BringMob = false
+        print("⏸️ Bring Mob đã TẮT")
+    end
+})
+
+-- Hiển thị level
+farmGroup:AddButton({
+    Title = "📊 XEM LEVEL HIỆN TẠI",
+    Callback = function()
+        print("📊 Level hiện tại: " .. (Player.Data.Level.Value or 0))
+    end
+})
 
 -- ==================== UI - TAB SETTINGS ====================
-local settingGroup = settingTab:AddLeftGroupbox("⚙️ Cài Đặt")
+local settingGroup = settingTab:AddLeftGroupbox("⚙️ Cài Đặt (Dùng Slider)")
 
+-- Lưu ý: Nếu Slider không hoạt động, thay bằng Button để tăng/giảm
 settingGroup:AddSlider({
     Title = "🚀 Tốc độ di chuyển",
-    Subtitle = "Tween Speed (100-500)",
+    Subtitle = "Tween Speed",
     Min = 100,
     Max = 500,
     Default = 300,
     Callback = function(value)
         _G.TweenSpeed = value
+        print("Tốc độ: " .. value)
     end
 })
 
@@ -280,21 +285,23 @@ settingGroup:AddSlider({
     Decimal = true,
     Callback = function(value)
         _G.AttackDelay = value
+        print("Delay đánh: " .. value)
     end
 })
 
 settingGroup:AddSlider({
     Title = "📏 Khoảng cách gom quái",
-    Subtitle = "Distance Mob (100-500)",
+    Subtitle = "Distance Mob",
     Min = 100,
     Max = 500,
     Default = 300,
     Callback = function(value)
         _G.DistanceMob = value
+        print("Khoảng cách gom: " .. value)
     end
 })
 
 -- ==================== HIỂN THỊ UI ====================
 UI.ToggleUI()
 print("Apple Hub Premium | by Quoc Hoa - Đã tải xong!")
-print("📌 Mở tab Farm -> Bật Auto Farm Level để bắt đầu farm")
+print("📌 Cách dùng: Bấm 'BẬT AUTO FARM' để bắt đầu farm")
