@@ -4,11 +4,12 @@ local UI = loadstring(game:HttpGet("https://raw.githubusercontent.com/phamquocho
 -- ==================== TẠO CỬA SỔ CHÍNH ====================
 local window = UI:CreateWindow({
     Title = "Apple Hub Premium",
-    Subtitle = "by Quoc Hoa",
-    Image = "rbxassetid://76048047842530"
+    Subtitle = "Auto Farm Blox Fruits | by Quoc Hoa",
+    Image = "rbxassetid://1774948259695"
 })
 
 -- ==================== TẠO TAB ====================
+local controlTab = window:AddTab("🎮 Điều Khiển")   -- TAB MỚI để bật/tắt
 local farmTab = window:AddTab("🌾 Farm")
 local settingTab = window:AddTab("⚙️ Settings")
 
@@ -18,7 +19,7 @@ _G.BringMob = true          -- Bật/tắt gom quái
 _G.TweenSpeed = 300         -- Tốc độ di chuyển
 _G.AttackDelay = 0.2        -- Delay đòn đánh
 _G.DistanceMob = 300        -- Khoảng cách quét quái
-_G.BringMobHeight = -5      -- Độ cao gom quái (âm = dưới chân)
+_G.BringMobHeight = -5      -- Độ cao gom quái
 
 -- ==================== SERVICE ====================
 local Players = game:GetService("Players")
@@ -28,7 +29,6 @@ local Player = Players.LocalPlayer
 
 -- ==================== MỐC LEVEL 1-2600 ====================
 local QuestLevels = {
-    -- Sea 1 (1-700)
     {min = 1, max = 10, npc = "Bandit", questName = "BanditQuest1", location = Vector3.new(1120, 13, 1450)},
     {min = 11, max = 20, npc = "Monkey", questName = "MonkeyQuest1", location = Vector3.new(-1177, 68, 292)},
     {min = 21, max = 30, npc = "Pirate", questName = "PirateQuest1", location = Vector3.new(2677, 28, 180)},
@@ -54,7 +54,6 @@ local QuestLevels = {
     {min = 551, max = 600, npc = "CursedCaptain", questName = "CursedCaptainQuest1", location = Vector3.new(3637, 17, -354)},
     {min = 601, max = 650, npc = "IceAdmiral", questName = "IceAdmiralQuest1", location = Vector3.new(1562, 13, 433)},
     {min = 651, max = 700, npc = "MagmaNinja", questName = "MagmaNinjaQuest1", location = Vector3.new(-5718, 9, 273)},
-    -- Sea 2 (700-1525)
     {min = 701, max = 725, npc = "Raider", questName = "RaiderQuest1", location = Vector3.new(771, 31, 1351)},
     {min = 726, max = 750, npc = "Mercenary", questName = "MercenaryQuest1", location = Vector3.new(786, 32, 1172)},
     {min = 751, max = 775, npc = "SwanPirate", questName = "SwanPirateQuest1", location = Vector3.new(527, 18, 1406)},
@@ -73,7 +72,6 @@ local QuestLevels = {
     {min = 1351, max = 1400, npc = "Crewmate", questName = "CrewmateQuest1", location = Vector3.new(-285, 44, 1643)},
     {min = 1401, max = 1450, npc = "Bentham", questName = "BenthamQuest1", location = Vector3.new(-138, 46, 1634)},
     {min = 1451, max = 1525, npc = "DonSwan", questName = "DonSwanQuest1", location = Vector3.new(288, 31, 1629)},
-    -- Sea 3 (1525-2600)
     {min = 1526, max = 1575, npc = "Pirate", questName = "PirateQuest3", location = Vector3.new(-1110, 12, 3870)},
     {min = 1576, max = 1625, npc = "Brute", questName = "BruteQuest3", location = Vector3.new(-1116, 14, 3966)},
     {min = 1626, max = 1675, npc = "Gladiator", questName = "GladiatorQuest1", location = Vector3.new(1364, 25, 1190)},
@@ -169,7 +167,7 @@ task.spawn(function()
                 end
             end)
         end
-    end
+    end)
 end)
 
 -- ==================== AUTO ATTACK ====================
@@ -221,13 +219,11 @@ task.spawn(function()
                 local playerLevel = Player.Data.Level.Value
                 local questData = GetQuestByLevel(playerLevel)
                 
-                -- Nhận quest
                 TweenToPosition(questData.location)
                 task.wait(0.5)
                 StartQuest(questData)
                 task.wait(1)
                 
-                -- Di chuyển đến khu vực quái
                 local mobArea = questData.location + Vector3.new(0, 0, 50)
                 TweenToPosition(mobArea)
                 task.wait(0.5)
@@ -236,35 +232,44 @@ task.spawn(function()
     end
 end)
 
--- ==================== TẠO UI GROUPS ====================
-local farmGroup = farmTab:AddLeftGroupbox("🤖 Auto Farm")
-local settingGroup = settingTab:AddLeftGroupbox("⚙️ Cài Đặt")
+-- ==================== UI - TAB ĐIỀU KHIỂN (BẬT/TẮT CHÍNH) ====================
+local controlGroup = controlTab:AddLeftGroupbox("🎮 BẬT/TẮT AUTO FARM")
 
--- ==================== NÚT BẬT/TẮT AUTO FARM ====================
-farmGroup:AddToggle({
-    Title = "🔥 Auto Farm Level",
-    Subtitle = "Tự động nhận quest + di chuyển + đánh quái",
+controlGroup:AddToggle({
+    Title = "▶️ AUTO FARM LEVEL",
+    Subtitle = "Bật/Tắt toàn bộ hệ thống farm",
+    Default = false,
     Callback = function(value)
         _G.AutoFarm = value
-        print("Auto Farm: " .. tostring(value))
+        if value then
+            print("✅ Auto Farm đã BẬT")
+        else
+            print("⏸️ Auto Farm đã TẮT")
+        end
     end
 })
 
--- ==================== NÚT BẬT/TẮT BRING MOB ====================
-farmGroup:AddToggle({
-    Title = "📦 Bring Mob (Gom Quái)",
-    Subtitle = "Gom quái về một điểm để farm nhanh hơn",
+controlGroup:AddToggle({
+    Title = "📦 BRING MOB (Gom Quái)",
+    Subtitle = "Gom quái về một điểm để farm nhanh",
     Default = true,
     Callback = function(value)
         _G.BringMob = value
-        print("Bring Mob: " .. tostring(value))
     end
 })
 
--- ==================== THANH TRƯỢT TỐC ĐỘ ====================
+-- ==================== UI - TAB FARM ====================
+local farmGroup = farmTab:AddLeftGroupbox("🤖 Thông Tin Farm")
+
+farmGroup:AddLabel("📊 Trạng thái: " .. (_G.AutoFarm and "ĐANG BẬT" or "ĐANG TẮT"))
+farmGroup:AddLabel("🎯 Level hiện tại: " .. (Player.Data.Level.Value or 0))
+
+-- ==================== UI - TAB SETTINGS ====================
+local settingGroup = settingTab:AddLeftGroupbox("⚙️ CÀI ĐẶT")
+
 settingGroup:AddSlider({
     Title = "🚀 Tốc độ di chuyển",
-    Subtitle = "Tween Speed (Mặc định: 300)",
+    Subtitle = "Tween Speed",
     Min = 100,
     Max = 500,
     Default = 300,
@@ -273,7 +278,6 @@ settingGroup:AddSlider({
     end
 })
 
--- ==================== THANH TRƯỢT DELAY ĐÁNH ====================
 settingGroup:AddSlider({
     Title = "⚔️ Delay đòn đánh",
     Subtitle = "Attack Delay (giây)",
@@ -286,7 +290,6 @@ settingGroup:AddSlider({
     end
 })
 
--- ==================== THANH TRƯỢT KHOẢNG CÁCH GOM QUÁI ====================
 settingGroup:AddSlider({
     Title = "📏 Khoảng cách gom quái",
     Subtitle = "Distance Mob (Studs)",
@@ -302,4 +305,4 @@ settingGroup:AddSlider({
 UI.ToggleUI()
 
 print("✅ Apple Hub Premium | by Quoc Hoa - Đã tải xong!")
-print("📌 Bấm nút tròn để mở UI | Bật Auto Farm để bắt đầu")
+print("📌 Mở tab 'Điều Khiển' để bật/tắt Auto Farm") 
