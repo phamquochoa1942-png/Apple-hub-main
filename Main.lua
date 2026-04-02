@@ -10,24 +10,22 @@ local window = UI:CreateWindow({
 local farmTab = window:AddTab("🌾 Farm")
 local settingTab = window:AddTab("⚙️ Settings")
 
--- ==================== BIẾN CẤU HÌNH (ĐÃ FIX) ====================
+-- ==================== BIẾN CẤU HÌNH ====================
 _G.AutoFarm = false
 _G.BringMob = true
-_G.TweenSpeed = 300
-_G.AttackDelay = 0.2
-_G.BringMobRadius = 20      -- GIẢM TỪ 250 XUỐNG 20 (TRÁNH MẤT DAMAGE)
-_G.BringMobOffset = 10      -- KÉO CÁCH XA 10 STUDS
-_G.FlyHeight = 12           -- ĐỘ CAO BAY 12 STUDS
+_G.TweenSpeed = 200
+_G.AttackDelay = 0.15
+_G.BringMobRadius = 20
+_G.BringMobOffset = 12
+_G.FlyHeight = 12
 
 -- ==================== SERVICE ====================
 local Players = game:GetService("Players")
-local TweenService = game:GetService("TweenService")
 local VirtualInputManager = game:GetService("VirtualInputManager")
 local Player = Players.LocalPlayer
 
--- ==================== MỐC LEVEL 1-2600 (ĐẦY ĐỦ) ====================
+-- ==================== MỐC LEVEL 1-2600 ====================
 local QuestLevels = {
-    -- SEA 1 (1-700)
     {min = 1, max = 10, npc = "Bandit", location = Vector3.new(1120, 13, 1450), mobArea = Vector3.new(1100, 13, 1480)},
     {min = 11, max = 20, npc = "Monkey", location = Vector3.new(-1177, 68, 292), mobArea = Vector3.new(-1200, 68, 320)},
     {min = 21, max = 30, npc = "Pirate", location = Vector3.new(2677, 28, 180), mobArea = Vector3.new(2650, 28, 200)},
@@ -53,7 +51,6 @@ local QuestLevels = {
     {min = 551, max = 600, npc = "CursedCaptain", location = Vector3.new(3637, 17, -354), mobArea = Vector3.new(3610, 17, -370)},
     {min = 601, max = 650, npc = "IceAdmiral", location = Vector3.new(1562, 13, 433), mobArea = Vector3.new(1540, 13, 450)},
     {min = 651, max = 700, npc = "MagmaNinja", location = Vector3.new(-5718, 9, 273), mobArea = Vector3.new(-5740, 9, 290)},
-    -- SEA 2 (700-1525)
     {min = 701, max = 725, npc = "Raider", location = Vector3.new(771, 31, 1351), mobArea = Vector3.new(750, 31, 1370)},
     {min = 726, max = 750, npc = "Mercenary", location = Vector3.new(786, 32, 1172), mobArea = Vector3.new(760, 32, 1190)},
     {min = 751, max = 775, npc = "SwanPirate", location = Vector3.new(527, 18, 1406), mobArea = Vector3.new(500, 18, 1420)},
@@ -72,7 +69,6 @@ local QuestLevels = {
     {min = 1351, max = 1400, npc = "Crewmate", location = Vector3.new(-285, 44, 1643), mobArea = Vector3.new(-300, 44, 1660)},
     {min = 1401, max = 1450, npc = "Bentham", location = Vector3.new(-138, 46, 1634), mobArea = Vector3.new(-160, 46, 1650)},
     {min = 1451, max = 1525, npc = "DonSwan", location = Vector3.new(288, 31, 1629), mobArea = Vector3.new(260, 31, 1650)},
-    -- SEA 3 (1525-2600)
     {min = 1526, max = 1575, npc = "Pirate", location = Vector3.new(-1110, 12, 3870), mobArea = Vector3.new(-1130, 12, 3890)},
     {min = 1576, max = 1625, npc = "Brute", location = Vector3.new(-1116, 14, 3966), mobArea = Vector3.new(-1140, 14, 3980)},
     {min = 1626, max = 1675, npc = "Gladiator", location = Vector3.new(1364, 25, 1190), mobArea = Vector3.new(1340, 25, 1210)},
@@ -103,19 +99,19 @@ function GetQuestByLevel(level)
     return QuestLevels[1]
 end
 
--- ==================== LOGIC BAY (TWEEN) - CÓ ĐỘ CAO ====================
-local currentTween = nil
+-- ==================== LOGIC BAY (BODYVELOCITY - CHỐNG RỚT) ====================
+local BodyVel = nil
 
-function StopTween()
-    if currentTween then
-        pcall(function() currentTween:Cancel() end)
-        currentTween = nil
+function StopFly()
+    if BodyVel then
+        pcall(function() BodyVel:Destroy() end)
+        BodyVel = nil
     end
 end
 
-function TweenToPosition(Position)
+function FlyToPosition(Position)
     if not _G.AutoFarm then return false end
-    StopTween()
+    StopFly()
     
     pcall(function()
         local char = Player.Character
@@ -123,20 +119,23 @@ function TweenToPosition(Position)
         local hrp = char:FindFirstChild("HumanoidRootPart")
         if not hrp then return end
         
-        -- THÊM ĐỘ CAO BAY 12 STUDS
-        local adjustedPos = Vector3.new(Position.X, Position.Y + _G.FlyHeight, Position.Z)
-        local distance = (hrp.Position - adjustedPos).Magnitude
-        if distance < 10 then return end
+        -- Tạo BodyVelocity giữ nhân vật trên không
+        BodyVel = Instance.new("BodyVelocity")
+        BodyVel.MaxForce = Vector3.new(4000, 4000, 4000)
+        BodyVel.P = 2000
+        BodyVel.Parent = hrp
         
-        local tweenInfo = TweenInfo.new(
-            math.clamp(distance / _G.TweenSpeed, 0.5, 10),
-            Enum.EasingStyle.Linear
-        )
-        currentTween = TweenService:Create(hrp, tweenInfo, {CFrame = CFrame.new(adjustedPos)})
-        currentTween:Play()
-        currentTween.Completed:Wait()
-        currentTween = nil
+        local targetPos = Vector3.new(Position.X, Position.Y + _G.FlyHeight, Position.Z)
+        
+        while _G.AutoFarm and (hrp.Position - targetPos).Magnitude > 10 do
+            local direction = (targetPos - hrp.Position).Unit
+            BodyVel.Velocity = direction * _G.TweenSpeed
+            task.wait(0.05)
+        end
+        
+        StopFly()
     end)
+    return true
 end
 
 -- ==================== NOCLIP (XUYÊN TƯỜNG) ====================
@@ -158,16 +157,16 @@ task.spawn(function()
     end
 end)
 
--- ==================== ANTI-FALL (CHỐNG BAY KICK) ====================
+-- ==================== ANTI-FALL (DỰ PHÒNG) ====================
 task.spawn(function()
     while true do
-        task.wait(0.5)
+        task.wait(0.3)
         if _G.AutoFarm then
             pcall(function()
                 local char = Player.Character
                 if char then
                     local hrp = char:FindFirstChild("HumanoidRootPart")
-                    if hrp and hrp.Velocity.Y < -40 then
+                    if hrp and hrp.Velocity.Y < -30 and not BodyVel then
                         hrp.Velocity = Vector3.new(hrp.Velocity.X, 0, hrp.Velocity.Z)
                     end
                 end
@@ -176,18 +175,35 @@ task.spawn(function()
     end
 end)
 
--- ==================== AUTO QUEST (ĐÃ FIX) ====================
+-- ==================== AUTO QUEST (3 CÁCH GỌI) ====================
 function StartQuest(questData)
     if not questData then return end
     
     pcall(function()
         local remote = game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):WaitForChild("CommF_")
-        remote:InvokeServer("StartQuest", questData.npc)
-        print("✅ Đã nhận quest: " .. questData.npc)
+        
+        -- Cách 1: InvokeServer chuẩn
+        local success, _ = pcall(function()
+            remote:InvokeServer("StartQuest", questData.npc)
+        end)
+        
+        if not success then
+            -- Cách 2: FireServer
+            pcall(function()
+                remote:FireServer("StartQuest", questData.npc)
+            end)
+            
+            -- Cách 3: InvokeServer với table
+            pcall(function()
+                remote:InvokeServer({[1] = "StartQuest", [2] = questData.npc})
+            end)
+        end
+        
+        print("✅ Đã gửi yêu cầu quest: " .. questData.npc)
     end)
 end
 
--- ==================== BRING MOB (GOM QUÁI) - ĐÃ GIẢM RADIUS XUỐNG 20 ====================
+-- ==================== BRING MOB (GOM QUÁI - RADIUS NHỎ) ====================
 task.spawn(function()
     while true do
         task.wait(0.15)
@@ -198,7 +214,6 @@ task.spawn(function()
                 local hrp = char:FindFirstChild("HumanoidRootPart")
                 if not hrp then return end
                 
-                -- Kéo quái về phía trước mặt, cách 10 studs
                 local targetPos = hrp.Position + (hrp.CFrame.LookVector * _G.BringMobOffset)
                 
                 for _, v in pairs(workspace:GetChildren()) do
@@ -207,7 +222,6 @@ task.spawn(function()
                         local enemyHum = v.Humanoid
                         local dist = (enemyHrp.Position - hrp.Position).Magnitude
                         
-                        -- CHỈ GOM QUÁI TRONG BÁN KÍNH 20 (TRÁNH MẤT DAMAGE)
                         if enemyHum.Health > 0 and dist <= _G.BringMobRadius and dist > 5 then
                             enemyHrp.CFrame = CFrame.new(targetPos)
                             enemyHrp.Velocity = Vector3.new(0, 0, 0)
@@ -252,22 +266,19 @@ task.spawn(function()
                     return 
                 end
                 
-                -- 1. Di chuyển đến NPC (có độ cao 12 studs)
-                print("🚶 Đang di chuyển đến " .. questData.npc)
-                TweenToPosition(questData.location)
+                print("🚶 Di chuyển đến " .. questData.npc)
+                FlyToPosition(questData.location)
                 task.wait(0.8)
                 
-                -- 2. Nhận quest
-                print("📜 Đang nhận quest từ " .. questData.npc)
+                print("📜 Nhận quest từ " .. questData.npc)
                 StartQuest(questData)
                 task.wait(1)
                 
-                -- 3. Di chuyển đến khu vực có quái
                 print("⚔️ Di chuyển đến khu vực farm")
-                TweenToPosition(questData.mobArea)
+                FlyToPosition(questData.mobArea)
                 task.wait(0.5)
                 
-                print("🔥 Đang farm | Level: " .. playerLevel .. " | Quái: " .. questData.npc)
+                print("🔥 Farming | Level: " .. playerLevel .. " | Quái: " .. questData.npc)
             end)
         end
     end
@@ -288,7 +299,7 @@ farmGroup:AddButton({
     Title = "⏹️ TẮT AUTO FARM",
     Callback = function()
         _G.AutoFarm = false
-        StopTween()
+        StopFly()
         print("⏸️ Auto Farm đã TẮT")
     end
 })
@@ -298,7 +309,6 @@ farmGroup:AddButton({
     Callback = function()
         _G.BringMob = true
         print("✅ Bring Mob BẬT (bán kính 20)")
-
     end
 })
 
@@ -317,7 +327,7 @@ settingGroup:AddSlider({
     Title = "🚀 Tốc độ bay",
     Min = 100,
     Max = 500,
-    Default = 300,
+    Default = 200,
     Callback = function(v) _G.TweenSpeed = v end
 })
 
@@ -325,7 +335,7 @@ settingGroup:AddSlider({
     Title = "⚔️ Delay đánh",
     Min = 0.05,
     Max = 0.5,
-    Default = 0.2,
+    Default = 0.15,
     Decimal = true,
     Callback = function(v) _G.AttackDelay = v end
 })
@@ -352,6 +362,7 @@ print("=" .. string.rep("=", 40))
 print("✅ Apple Hub Premium - ĐÃ FIX HOÀN CHỈNH!")
 print("📌 Hướng dẫn:")
 print("   1. Bấm 'BẬT AUTO FARM'")
-print("   2. Script tự động nhận quest + bay có độ cao 12 studs")
-print("   3. Bán kính gom quái = 20 (tránh mất damage)")
+print("   2. Script dùng BodyVelocity -> KHÔNG BỊ RỚT")
+print("   3. Auto Quest với 3 cách gọi Remote")
+print("   4. Gom quái bán kính 20 (tránh mất damage)")
 print("=" .. string.rep("=", 40)) 
