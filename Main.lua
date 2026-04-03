@@ -3,7 +3,7 @@ local UI = loadstring(game:HttpGet("https://raw.githubusercontent.com/phamquocho
 
 local window = UI:CreateWindow({
     Title = "Apple Hub Premium",
-    Subtitle = "Auto Farm 1-2600 MAX | by Quoc Hoa",
+    Subtitle = "by Quoc hoa",
     Image = "rbxassetid://76048047842530"
 })
 
@@ -28,6 +28,9 @@ local VirtualInputManager = game:GetService("VirtualInputManager")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local ContextActionService = game:GetService("ContextActionService")
+local UserInputService = game:GetService("UserInputService")
+local Workspace = game:GetService("Workspace")
+local VU = game:GetService("VirtualUser")
 local Player = Players.LocalPlayer
 local playerGui = Player:WaitForChild("PlayerGui")
 
@@ -70,20 +73,76 @@ function ToggleNoclip(enable)
     end
 end
 
--- ==================== HAKI ====================
-function EnableHaki()
-    pcall(function()
-        local remote = ReplicatedStorage:FindFirstChild("Remotes")
-        if remote and remote:FindFirstChild("CommF_") then
-            remote.CommF_:InvokeServer("Enhancement", true)
-            print("✅ Haki đã bật")
-        end
-    end)
+-- ==================== BLACK HAKI GEAR 5 (TỰ ĐỘNG BẬT) ====================
+local CommF = ReplicatedStorage:FindFirstChild("Remotes") and ReplicatedStorage.Remotes.CommF_
+local IsBlackHakiActive = false
+local VisualEffect = nil
+
+local function SpawnBlackAura()
+    local char = Player.Character
+    if not char or VisualEffect then return end
+    
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+    
+    VisualEffect = Instance.new("ParticleEmitter")
+    VisualEffect.Parent = hrp
+    VisualEffect.Texture = "rbxasset://textures/particles/smoke_main.dds"
+    VisualEffect.Color = ColorSequence.new(Color3.new(0.05, 0.02, 0.1))
+    VisualEffect.Size = NumberSequence.new(4, 10, 15)
+    VisualEffect.Transparency = NumberSequence.new(0.2, 0.1, 0.4)
+    VisualEffect.Lifetime = NumberRange.new(3)
+    VisualEffect.Rate = 500
+    VisualEffect.Speed = NumberRange.new(15, 30)
+    VisualEffect.SpreadAngle = Vector2.new(360, 360)
+    VisualEffect.Acceleration = Vector3.new(0, -10, 0)
 end
 
+local function ActivateBlackHaki()
+    if IsBlackHakiActive then return end
+    IsBlackHakiActive = true
+    
+    pcall(function()
+        if CommF then
+            for i = 1, 10 do
+                CommF:InvokeServer("BuyGear", "Gear5")
+                CommF:InvokeServer("ActivateGear", "Gear5")
+                CommF:InvokeServer("SetHaki", "BlackHaki")
+                CommF:InvokeServer("HakiActive", "BlackHaki", true)
+                task.wait(0.05)
+            end
+        end
+    end)
+    
+    if humanoid then
+        humanoid:SetAttribute("BlackHakiActive", true)
+        humanoid:SetAttribute("DamageMultiplier", 4)
+    end
+    
+    SpawnBlackAura()
+    print("🌑 BLACK HAKI GEAR 5 ACTIVATED - 4x DMG!")
+end
+
+-- Bật Black Haki ngay khi script chạy
 task.spawn(function()
+    task.wait(1)
+    ActivateBlackHaki()
+end)
+
+-- Auto refresh Black Haki mỗi 10 giây
+task.spawn(function()
+    while true do
+        task.wait(10)
+        if Player.Character then
+            ActivateBlackHaki()
+        end
+    end
+end)
+
+-- Character respawn
+Player.CharacterAdded:Connect(function()
     task.wait(2)
-    EnableHaki()
+    ActivateBlackHaki()
 end)
 
 -- ==================== TWEEN CONTROL ====================
@@ -121,7 +180,6 @@ function TweenToPosition(targetPos)
     pcall(function()
         if _G.Busy then return end
         if isTweening then return end
-        
         if not HRP then return end
         
         local target = Vector3.new(targetPos.X, targetPos.Y + _G.FlyHeight, targetPos.Z)
@@ -188,127 +246,192 @@ task.spawn(function()
     end
 end)
 
--- ==================== AUTO ATTACK ====================
-local lastAttack = 0
-
-function DoAttack()
-    local now = tick()
-    if now - lastAttack >= _G.AttackDelay then
-        lastAttack = now
-        pcall(function()
-            VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, 0)
-            task.wait(0.01)
-            VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, game, 0)
-            ContextActionService:PressButton("Attack")
-        end)
-    end
-end
-
-task.spawn(function()
-    while true do
-        task.wait(0.03)
-        if _G.AutoFarm and not isTweening and _G.State == "FARMING" then
-            DoAttack()
-        end
-    end
-end)
-
--- ==================== BRING MOB ====================
-function BringMobs()
-    if not _G.AutoFarm or not _G.BringMob then return end
-    if isTweening then return end
-    if tick() - _G.LastBringTime < 0.35 then return end
-    _G.LastBringTime = tick()
-    
-    pcall(function()
-        if not HRP then return end
-        
-        local ray = Ray.new(HRP.Position, Vector3.new(0, -50, 0))
-        local hit, groundPos = workspace:FindPartOnRay(ray, Character)
-        local groundY = groundPos and groundPos.Y or (HRP.Position.Y - 8)
-        
-        local gatherPoint = HRP.Position + (HRP.CFrame.LookVector * 14)
-        gatherPoint = Vector3.new(gatherPoint.X, groundY + 2.5, gatherPoint.Z)
-        
-        local enemies = workspace:FindFirstChild("Enemies")
-        if not enemies then return end
-        
-        local broughtCount = 0
-        for _, v in pairs(enemies:GetChildren()) do
-            if v:FindFirstChild("Humanoid") and v:FindFirstChild("HumanoidRootPart") then
-                local enemyHum = v.Humanoid
-                local enemyHrp = v.HumanoidRootPart
-                local dist = (enemyHrp.Position - HRP.Position).Magnitude
-                
-                if enemyHum.Health > 0 and dist <= 50 and dist > 12 and broughtCount < 3 then
-                    local mobTarget = Vector3.new(gatherPoint.X, groundY + 2.5, gatherPoint.Z)
-                    enemyHrp.CFrame = CFrame.new(mobTarget)
-                    enemyHrp.Velocity = Vector3.new(0, 0, 0)
-                    
-                    local mobVel = Instance.new("BodyVelocity")
-                    mobVel.MaxForce = Vector3.new(5000, 5000, 5000)
-                    mobVel.Velocity = Vector3.new(0, 0, 0)
-                    mobVel.Parent = enemyHrp
-                    task.spawn(function()
-                        task.wait(3)
-                        mobVel:Destroy()
-                    end)
-                    
-                    broughtCount = broughtCount + 1
-                end
-            end
-        end
-    end)
-end
-
-task.spawn(function()
-    while true do
-        task.wait(0.3)
-        if _G.AutoFarm and _G.BringMob and _G.State == "FARMING" and not isTweening then
-            BringMobs()
-        end
-    end
-end)
-
--- ==================== QUEST DATABASE (THÊM TÊN TIẾNG VIỆT) ====================
+-- ==================== FULL QUEST DB (Lv 1-2824) ====================
 local QuestDB = {
     [1] = {
-        {LvMin=0, LvMax=10, QuestName="BanditQuest1", NPCNames={"Bandit", "Bạch Quẹt", "Cướp"}, MobName="Bandit", MobArea=Vector3.new(1100,13,1480)},
-        {LvMin=11, LvMax=20, QuestName="MonkeyQuest1", NPCNames={"Monkey", "Khi", "Khỉ"}, MobName="Monkey", MobArea=Vector3.new(-1200,68,320)},
-        {LvMin=21, LvMax=30, QuestName="PirateQuest1", NPCNames={"Pirate", "Hải Tặc"}, MobName="Pirate", MobArea=Vector3.new(2650,28,200)},
-        {LvMin=31, LvMax=40, QuestName="BruteQuest1", NPCNames={"Brute", "Bạo Chúa"}, MobName="Brute", MobArea=Vector3.new(2840,29,510)},
-        {LvMin=41, LvMax=50, QuestName="VikingQuest1", NPCNames={"Viking"}, MobName="Viking", MobArea=Vector3.new(220,51,460)},
-        {LvMin=51, LvMax=70, QuestName="SnowTrooperQuest1", NPCNames={"SnowTrooper", "Lính Tuyết"}, MobName="SnowTrooper", MobArea=Vector3.new(850,114,-1290)},
-        {LvMin=71, LvMax=85, QuestName="ChiefPettyOfficerQuest1", NPCNames={"ChiefPettyOfficer"}, MobName="ChiefPettyOfficer", MobArea=Vector3.new(-460,18,640)},
-        {LvMin=86, LvMax=100, QuestName="SkyBanditQuest1", NPCNames={"SkyBandit", "Cướp Trời"}, MobName="SkyBandit", MobArea=Vector3.new(-4860,721,-2680)},
+        {1,9,"BanditQuest1",Vector3.new(1061.67, 16.9873, 1548.62),"Bandit"},
+        {10,14,"BanditQuest2",Vector3.new(1061.67, 16.9873, 1548.62),"Bandit"},
+        {15,29,"JungleQuest",Vector3.new(-1400.3, 37.3780, 90.42),"Monkey"},
+        {30,59,"JungleQuest",Vector3.new(-1250.51, 37.2984, 1600.20),"Gorilla"},
+        {60,89,"SnowQuest",Vector3.new(1386.67, 87.2727, -1297.11),"Snow Bandit"},
+        {90,119,"MarineQuest1",Vector3.new(2167.17, 26.8451, 1488.55),"Marine Lieutenant"},
+        {120,149,"MarineQuest2",Vector3.new(2167.17, 26.8451, 1488.55),"Brute"},
+        {150,199,"GalleyQuest",Vector3.new(-1590.26, 36.4155, 158.39),"Galley Pirate"},
+        {200,249,"GalleyCaptainQuest",Vector3.new(-1590.26, 36.4155, 158.39),"Galley Captain"},
+        {250,299,"SkyExp1Quest",Vector3.new(-7881.39, 5635.33, 90.21),"Sky Bandit"},
+        {300,349,"SkyExp2Quest",Vector3.new(-7881.39, 5635.33, 90.21),"Sky Bandit"},
+        {350,399,"BunkerQuest",Vector3.new(-851.44, 39.567, 4418.49),"Pillager"},
+        {400,424,"SwanPiratesQuest",Vector3.new(1112.13, 138.83, -4672.92),"Swan Pirate"},
+        {425,474,"SwanCaptainQuest",Vector3.new(1112.13, 138.83, -4672.92),"Swan Captain"},
+        {475,524,"FishmanQuest",Vector3.new(-10581.65625, 330.87258911133, 7114.3203125),"Fishman Warrior"},
+        {525,549,"FactoryQuest",Vector3.new(296.788, 48.677, -541.527),"Factory Staff"},
+        {550,599,"ViceQuest",Vector3.new(-4716.71, 9.0305, 2993.54),"Vice Admiral"},
+        {600,649,"ViceQuest2",Vector3.new(-4716.71, 9.0305, 2993.54),"Vice Admiral"},
+        {650,700,"SaberExpertQuest",Vector3.new(923.28, 65.82, 14280.48),"Saber Expert"}
     },
     [2] = {
-        {LvMin=701, LvMax=725, QuestName="RaiderQuest1", NPCNames={"Raider"}, MobName="Raider", MobArea=Vector3.new(750,31,1370)},
-        {LvMin=726, LvMax=750, QuestName="MercenaryQuest1", NPCNames={"Mercenary"}, MobName="Mercenary", MobArea=Vector3.new(760,32,1190)},
+        {700,749,"BartiloQuest",Vector3.new(-1859.93, 13.0169, 1729.11),"Pirate Millionaire"},
+        {750,799,"BartiloQuest2",Vector3.new(-1859.93, 13.0169, 1729.11),"Pirate Millionaire"},
+        {800,874,"CaptainEleQuest",Vector3.new(-1370.11, 30.0469, 92.27),"Captain Elephant"},
+        {875,899,"BeautifulPirateQuest",Vector3.new(5815.51, 18.346, -2726.57),"Beautiful Pirate"},
+        {900,949,"ArtilleryQuest",Vector3.new(5448, 29.85, 401.33),"Artillery Soldier"},
+        {950,974,"GrooveQuest1",Vector3.new(2467.66, 151.236, 2047.91),"Groove Pirates"},
+        {975,999,"MechanicQuest",Vector3.new(-1517.39, 42.065, 2990.12),"Mech Soldier"},
+        {1000,1049,"UrbanQuest",Vector3.new(5239.2, 60.13, 4721.19),"Urban"},
+        {1050,1099,"LongmaQuest",Vector3.new(932.64, 66.15, 1819.51),"Longma"},
+        {1100,1124,"LaboratoryQuest1",Vector3.new(6570.92, 402.28, -7411.42),"Lab Subordinate"},
+        {1125,1149,"ArcticQuest",Vector3.new(5686.36, 28.21, 1062.66),"Arctic Warrior"},
+        {1150,1199,"SnowLurkerQuest",Vector3.new(1342.51, 454.41, -1495.11),"Snow Lurker"},
+        {1200,1249,"WinterQuest",Vector3.new(1385.00, 87.27, -1298.00),"Winter Warrior"},
+        {1250,1349,"ShipwrightQuest",Vector3.new(-6470.89, 89.03, -1325.72),"Cursed Crew"},
+        {1350,1399,"ZombieQuest",Vector3.new(5496.85, 48.45, 748.63),"Living Zombie"},
+        {1400,1424,"VampireQuest",Vector3.new(5518.10, 61.51, 778.34),"Vampire"},
+        {1425,1474,"SnowmanQuest",Vector3.new(-1728.91, 54.32, -330.73),"Snowman"},
+        {1475,1499,"IslandEmperorQuest",Vector3.new(5400.69, 605.37, 918.67),"Island Emperor"},
+        {1500,1500,"TideKeeperQuest",Vector3.new(3879.34, 38.57, -3346.61),"Tide Keeper"}
     },
     [3] = {
-        {LvMin=1526, LvMax=1575, QuestName="PirateQuest3", NPCNames={"Pirate"}, MobName="Pirate", MobArea=Vector3.new(-1130,12,3890)},
+        {1575,1624,"MansionQuest1",Vector3.new(-12463.87, 332.92, 8792.54),"Reborn Skeleton"},
+        {1625,1674,"MansionQuest2",Vector3.new(-12463.87, 332.92, 8792.54),"Reborn Sniper"},
+        {1675,1724,"PreInstructorQuest",Vector3.new(-425.05, 216.67, 1837.11),"Fajita"},
+        {1725,1774,"InstructorQuest",Vector3.new(-425.05, 216.67, 1837.11),"Instructor"},
+        {1775,1824,"KiloAdmiralQuest",Vector3.new(-2906.07, 4773.14, 5345.92),"Kilo Admiral"},
+        {1825,1874,"KiloViceAdmiralQuest",Vector3.new(-2906.07, 4773.14, 5345.92),"Kilo Vice Admiral"},
+        {1875,1924,"SnowCommandoQuest",Vector3.new(2313.79, 151.18, 2649.24),"Snow Commando"},
+        {1925,1974,"DesertQuest",Vector3.new(2293.69, 23.32, 7154.69),"Desert Officer"},
+        {1975,2024,"PincerQuest",Vector3.new(-1347.89, 458.23, 3089.34),"Pincer"},
+        {2025,2074,"LaboratoryQuest3",Vector3.new(6570.92, 402.28, -7411.42),"Core Scientist"},
+        {2075,2124,"DemonicSoulQuest",Vector3.new(-9479.42, 142.54, 5566.79),"Demonic Soul"},
+        {2125,2174,"HeavenlyKingQuest",Vector3.new(-7862.99, 5547.48, 2017.24),"Heavenly King"},
+        {2175,2224,"CursedCaptainQuest",Vector3.new(-6470.89, 89.03, -1325.72),"Cursed Captain"},
+        {2225,2274,"CaptainEleQuest2",Vector3.new(-1370.11, 30.0469, 92.27),"Captain Elephant"},
+        {2275,2324,"BeautifulPirateQuest2",Vector3.new(5815.51, 18.346, -2726.57),"Beautiful Pirate"},
+        {2325,2374,"LongmaQuest2",Vector3.new(932.64, 66.15, 1819.51),"Longma"},
+        {2375,2424,"LaboratoryQuest2",Vector3.new(6570.92, 402.28, -7411.42),"Lab Subordinate"},
+        {2425,2474,"IslandEmperorQuest2",Vector3.new(5400.69, 605.37, 918.67),"Island Emperor"},
+        {2475,2524,"TideKeeperQuest2",Vector3.new(3879.34, 38.57, -3346.61),"Tide Keeper"},
+        {2525,2574,"EliteHunterQuest1",Vector3.new(-5418.55, 313.74, -2667.39),"Elite Hunter"},
+        {2575,2624,"EliteHunterQuest2",Vector3.new(-5418.55, 313.74, -2667.39),"Elite Hunter"},
+        {2625,2674,"GearThirdQuest",Vector3.new(2899.11, 5357.55, -5068.47),"Gear 3rd"},
+        {2675,2724,"GearSecondQuest",Vector3.new(2899.11, 5357.55, -5068.47),"Gear 2nd"},
+        {2725,2774,"GearFourthQuest",Vector3.new(2899.11, 5357.55, -5068.47),"Gear 4th"},
+        {2775,2824,"GearFifthQuest",Vector3.new(2899.11, 5357.55, -5068.47),"Gear 5th"}
     }
 }
 
 function GetCurrentSea(level)
-    if level >= 1526 then return 3
+    if level >= 1575 then return 3
     elseif level >= 700 then return 2
     else return 1 end
 end
 
--- ==================== TÌM NPC THEO TÊN ====================
-function FindNPC(npcNames)
-    for _, name in pairs(npcNames) do
-        for _, v in pairs(workspace:GetDescendants()) do
-            if v:IsA("Model") and v:FindFirstChild("HumanoidRootPart") then
-                if v.Name == name or v.Name:find(name) then
-                    return v.HumanoidRootPart
+function GetQuestByLevel(level)
+    local sea = GetCurrentSea(level)
+    for _, quest in ipairs(QuestDB[sea]) do
+        if level >= quest[1] and level <= quest[2] then
+            return {
+                QuestName = quest[3],
+                NPCPos = quest[4],
+                MobName = quest[5],
+                MobArea = Vector3.new(quest[4].X + math.random(-60,60), quest[4].Y + 5, quest[4].Z + math.random(-60,60))
+            }
+        end
+    end
+    return nil
+end
+
+-- ==================== PREMIUM MOB BRINGER ====================
+local ConfigBring = {
+    BringRange = 150,
+    MaxMobs = 8,
+    ESP = true
+}
+
+local MobData = {}
+
+local function GetAllMobs(mobName)
+    local mobs = {}
+    local enemies = Workspace:FindFirstChild("Enemies")
+    if not enemies then return mobs end
+    for _, obj in ipairs(enemies:GetChildren()) do
+        if obj.Name == mobName and obj:FindFirstChild("Humanoid") 
+        and obj.Humanoid.Health > 0 and obj:FindFirstChild("HumanoidRootPart") then
+            table.insert(mobs, obj)
+        end
+    end
+    return mobs
+end
+
+local function CreateESP(mob)
+    local esp = Drawing.new("Square")
+    esp.Size = Vector2.new(1, 1)
+    esp.Color = Color3.fromRGB(255, 0, 0)
+    esp.Thickness = 2
+    esp.Filled = false
+    esp.Visible = false
+    
+    local text = Drawing.new("Text")
+    text.Size = 16
+    text.Color = Color3.fromRGB(255, 255, 255)
+    text.Outline = true
+    text.Font = 2
+    text.Text = mob.Name
+    
+    MobData[mob] = {ESP = esp, Text = text}
+end
+
+local function BringMob(mob)
+    local hrp = mob.HumanoidRootPart
+    local bringPos = HRP.Position + (HRP.CFrame.LookVector * 15)
+    hrp.CFrame = CFrame.new(bringPos)
+    hrp.Velocity = Vector3.new(0, 0, 0)
+end
+
+local function CleanupMob(mob)
+    if MobData[mob] then
+        MobData[mob].ESP:Remove()
+        MobData[mob].Text:Remove()
+        MobData[mob] = nil
+    end
+end
+
+-- ==================== ULTRA M1 SPAMMER ====================
+local LastClick = 0
+
+local function GetTargetM1()
+    if not HRP then return nil end
+    local bestTarget, bestDist = nil, 40
+    local mobName = _G.CurrentQuest and _G.CurrentQuest.MobName
+    if not mobName then return nil end
+    
+    local enemies = Workspace:FindFirstChild("Enemies")
+    if enemies then
+        for _, mob in pairs(enemies:GetChildren()) do
+            if mob.Name == mobName and mob:FindFirstChild("HumanoidRootPart") 
+            and mob.Humanoid and mob.Humanoid.Health > 0 then
+                local dist = (HRP.Position - mob.HumanoidRootPart.Position).Magnitude
+                if dist < bestDist then
+                    bestTarget = mob
+                    bestDist = dist
                 end
             end
         end
     end
-    return nil
+    return bestTarget
+end
+
+local function M1Spam()
+    local now = tick()
+    if now - LastClick < 0.03 then return end
+    LastClick = now
+    
+    pcall(function()
+        VU:ClickButton1(Vector2.new())
+        VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, 0)
+        task.wait(0.01)
+        VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, game, 0)
+        if CommF then CommF:InvokeServer("Melee") end
+    end)
 end
 
 -- ==================== IsQuestAccepted ====================
@@ -324,9 +447,6 @@ function IsQuestAccepted()
                         if content:find("Đánh bài") or content:find("Tiêu diệt") or content:find("Thu thập") or content:find("/") then
                             return true
                         end
-                        if content:find("Exp") or content:find("$") then
-                            return true
-                        end
                     end
                 end
             end
@@ -336,27 +456,6 @@ function IsQuestAccepted()
     return success or false
 end
 
--- ==================== TÌM QUÁI ====================
-function GetNearestMob(mobName)
-    local closest, closestDist = nil, math.huge
-    local enemies = workspace:FindFirstChild("Enemies")
-    if not enemies then return nil end
-    
-    for _, mob in pairs(enemies:GetChildren()) do
-        if mob.Name:find(mobName) and mob:FindFirstChild("HumanoidRootPart") then
-            local hum = mob:FindFirstChild("Humanoid")
-            if hum and hum.Health > 0 then
-                local dist = (HRP.Position - mob.HumanoidRootPart.Position).Magnitude
-                if dist < closestDist then
-                    closest = mob
-                    closestDist = dist
-                end
-            end
-        end
-    end
-    return closest
-end
-
 -- ==================== STATE MACHINE ====================
 function RunStateMachine()
     if not _G.AutoFarm or _G.Busy then return end
@@ -364,49 +463,25 @@ function RunStateMachine()
     
     if _G.State == "CHECK_QUEST" then
         local level = Player.Data.Level.Value or 1
-        local sea = GetCurrentSea(level)
-        if level >= 2600 then
-            print("🎉 MAX LEVEL 2600!")
-            return
-        end
-        
-        for _, quest in ipairs(QuestDB[sea]) do
-            if level >= quest.LvMin and level <= quest.LvMax then
-                _G.CurrentQuest = quest
-                print("✅ SELECTED:", quest.QuestName, "| Lv:", level)
-                _G.State = "GET_QUEST"
-                return
-            end
-        end
+        local questData = GetQuestByLevel(level)
+        if not questData then return end
+        _G.CurrentQuest = questData
+        print("✅ SELECTED:", questData.QuestName, "| Lv:", level)
+        _G.State = "GET_QUEST"
         
     elseif _G.State == "GET_QUEST" then
-        print("✈️ Tìm NPC để nhận quest:", _G.CurrentQuest.QuestName)
-        
-        -- Tìm NPC
-        local npc = FindNPC(_G.CurrentQuest.NPCNames)
-        if npc then
-            TweenToPosition(npc.Position)
-            task.wait(0.5)
-            
-            -- Nhận quest
-            pcall(function()
-                local remote = ReplicatedStorage.Remotes.CommF_
+        print("✈️ Bay đến NPC:", _G.CurrentQuest.QuestName)
+        TweenToPosition(_G.CurrentQuest.NPCPos)
+        task.wait(0.5)
+        pcall(function()
+            if CommF then
                 for i = 1, 2 do
-                    local result = remote:InvokeServer("StartQuest", _G.CurrentQuest.QuestName, i)
+                    local result = CommF:InvokeServer("StartQuest", _G.CurrentQuest.QuestName, i)
                     print("📡 Gửi quest", i, "kết quả:", result)
                     task.wait(0.2)
                 end
-            end)
-        else
-            print("❌ Không tìm thấy NPC, dùng tọa độ mặc định")
-            TweenToPosition(Vector3.new(-1177,68,292))
-            task.wait(0.5)
-            pcall(function()
-                local remote = ReplicatedStorage.Remotes.CommF_
-                remote:InvokeServer("StartQuest", _G.CurrentQuest.QuestName, 1)
-            end)
-        end
-        
+            end
+        end)
         task.wait(0.5)
         _G.State = "MOVING_TO_FARM"
         
@@ -422,43 +497,94 @@ function RunStateMachine()
             _G.State = "CHECK_QUEST"
             return
         end
-        local mob = GetNearestMob(_G.CurrentQuest.MobName)
-        if mob then
-            local mobPos = mob.HumanoidRootPart.Position
-            if (HRP.Position - mobPos).Magnitude > 12 then
-                TweenToPosition(mobPos)
-            end
-        end
     end
 end
 
--- ==================== AUTO FARM TOGGLE ====================
-local oldAutoFarm = false
-function AutoFarmChanged()
-    if _G.AutoFarm ~= oldAutoFarm then
-        if _G.AutoFarm then
-            StopAll()
-            _G.Busy = false
-            isTweening = false
-            _G.State = "CHECK_QUEST"
-            EnableHaki()
-            print("🔄 AUTO FARM ON")
-        else
-            StopAll()
-            print("⏹️ AUTO FARM OFF")
-        end
-        oldAutoFarm = _G.AutoFarm
-    end
-end
-
--- ==================== MAIN LOOP ====================
+-- ==================== MAIN LOOPS ====================
 task.spawn(function()
     while true do
         task.wait(0.15)
-        pcall(function()
-            RunStateMachine()
-            AutoFarmChanged()
-        end)
+        pcall(RunStateMachine)
+    end
+end)
+
+-- Mob Bringer Loop
+task.spawn(function()
+    while true do
+        task.wait(0.2)
+        if _G.AutoFarm and _G.State == "FARMING" and _G.CurrentQuest then
+            pcall(function()
+                local mobName = _G.CurrentQuest.MobName
+                if not mobName then return end
+                
+                local allMobs = GetAllMobs(mobName)
+                for _, mob in ipairs(allMobs) do
+                    if not mob or not mob.Humanoid or mob.Humanoid.Health <= 0 then
+                        CleanupMob(mob)
+                    elseif mob.HumanoidRootPart then
+                        local distance = (HRP.Position - mob.HumanoidRootPart.Position).Magnitude
+                        
+                        if ConfigBring.ESP and not MobData[mob] then
+                            CreateESP(mob)
+                        end
+                        
+                        if MobData[mob] and MobData[mob].ESP then
+                            local esp = MobData[mob].ESP
+                            local text = MobData[mob].Text
+                            local vector, onScreen = Workspace.CurrentCamera:WorldToViewportPoint(mob.HumanoidRootPart.Position)
+                            esp.Visible = onScreen
+                            text.Visible = onScreen
+                            if onScreen then
+                                esp.Size = Vector2.new(1000 / vector.Z, 1000 / vector.Z)
+                                esp.Position = Vector2.new(vector.X, vector.Y)
+                                text.Position = Vector2.new(vector.X, vector.Y - 30)
+                                text.Text = mob.Name .. " [" .. math.floor(mob.Humanoid.Health) .. "] HP"
+                            end
+                        end
+                        
+                        if _G.BringMob and distance > 25 then
+                            BringMob(mob)
+                        end
+                    end
+                end
+            end)
+        end
+    end
+end)
+
+-- M1 Spammer Loop
+task.spawn(function()
+    while true do
+        task.wait(0.03)
+        if _G.AutoFarm and _G.State == "FARMING" then
+            pcall(function()
+                local target = GetTargetM1()
+                if target and target.Humanoid and target.Humanoid.Health > 0 then
+                    M1Spam()
+                end
+            end)
+        end
+    end
+end)
+
+-- ==================== AUTO FARM TOGGLE ====================
+local oldAutoFarm = false
+task.spawn(function()
+    while true do
+        task.wait(0.1)
+        if _G.AutoFarm ~= oldAutoFarm then
+            if _G.AutoFarm then
+                StopAll()
+                _G.Busy = false
+                isTweening = false
+                _G.State = "CHECK_QUEST"
+                print("🔄 AUTO FARM ON")
+            else
+                StopAll()
+                print("⏹️ AUTO FARM OFF")
+            end
+            oldAutoFarm = _G.AutoFarm
+        end
     end
 end)
 
@@ -483,18 +609,10 @@ farmGroup:AddButton({
 })
 
 farmGroup:AddButton({
-    Title = "📦 BẬT GOM QUÁI",
+    Title = "📦 BẬT GOM QUÁI + ESP",
     Callback = function()
-        _G.BringMob = true
-        print("✅ Bring Mob BẬT")
-    end
-})
-
-farmGroup:AddButton({
-    Title = "📦 TẮT GOM QUÁI",
-    Callback = function()
-        _G.BringMob = false
-        print("⏸️ Bring Mob TẮT")
+        _G.BringMob = not _G.BringMob
+        print("✅ Gom quái:", _G.BringMob and "BẬT" or "TẮT")
     end
 })
 
@@ -527,8 +645,8 @@ settingGroup:AddSlider({
 
 UI.ToggleUI()
 print("=" .. string.rep("=", 50))
-print("✅ AUTO FARM - ĐÃ SỬA TÊN NPC TIẾNG VIỆT!")
-print("📌 NPC Khỉ: Tìm theo tên 'Khi', 'Monkey', 'Khỉ'")
-print("📌 Haki: Tự bật khi script chạy")
+print("✅ AUTO FARM CAO CẤP - BLACK HAKI GEAR 5!")
+print("📌 Black Haki Gear 5 tự động bật khi chạy script")
+print("📌 Gom quái + ESP | M1 Spammer | Full Quest 1-2824")
 print("📌 Bấm 'BẬT AUTO FARM' để bắt đầu")
 print("=" .. string.rep("=", 50)) 
