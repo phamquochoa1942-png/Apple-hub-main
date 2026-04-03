@@ -27,7 +27,17 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local Player = Players.LocalPlayer
 
--- ==================== LOGIC BAY (GIỮ NGUYÊN TỪ CODE CŨ) ====================
+-- ==================== GLOBAL CHARACTER & HRP ====================
+local Character, HRP
+
+function UpdateHRP()
+    Character = Player.Character or Player.CharacterAdded:Wait()
+    HRP = Character:WaitForChild("HumanoidRootPart")
+end
+UpdateHRP()
+Player.CharacterAdded:Connect(UpdateHRP)
+
+-- ==================== LOGIC BAY (TWEEN) ====================
 local currentTween = nil
 
 function StopTween()
@@ -37,33 +47,7 @@ function StopTween()
     end
 end
 
-function TweenToPosition(Position)
-    if not _G.AutoFarm then return false end
-    if _G.Busy then return false end
-    StopTween()
-    
-    local success = pcall(function()
-        local char = Player.Character
-        if not char then return end
-        local hrp = char:FindFirstChild("HumanoidRootPart")
-        if not hrp then return end
-        
-        local distance = (hrp.Position - Position).Magnitude
-        if distance < 10 then return end
-        
-        local tweenInfo = TweenInfo.new(
-            math.clamp(distance / _G.TweenSpeed, 0.5, 10),
-            Enum.EasingStyle.Linear
-        )
-        currentTween = TweenService:Create(hrp, tweenInfo, {CFrame = CFrame.new(Position)})
-        currentTween:Play()
-        currentTween.Completed:Wait()
-        currentTween = nil
-    end)
-    return success
-end
-
--- ==================== NOCLIP (CHUYÊN NGHIỆP) ====================
+-- ==================== NOCLIP ====================
 local noclipConnection = nil
 
 function ToggleNoclip(enable)
@@ -89,18 +73,38 @@ function ToggleNoclip(enable)
     end
 end
 
+-- ==================== SAFE TWEEN (CHO STATE MACHINE) ====================
+function SafeTween(targetCFrame)
+    if _G.Busy then return end
+    _G.Busy = true
+    
+    StopTween()
+    ToggleNoclip(true)
+    
+    local distance = (HRP.Position - targetCFrame.Position).Magnitude
+    local tweenTime = math.max(0.8, distance / _G.TweenSpeed)
+    
+    local tweenInfo = TweenInfo.new(tweenTime, Enum.EasingStyle.Linear)
+    local tween = TweenService:Create(HRP, tweenInfo, {CFrame = targetCFrame})
+    currentTween = tween
+    
+    tween:Play()
+    tween.Completed:Connect(function()
+        HRP.Velocity = Vector3.new(0,0,0)
+        ToggleNoclip(false)
+        _G.Busy = false
+        print("✅ Tween hoàn thành")
+    end)
+end
+
 -- ==================== ANTI-FALL ====================
 task.spawn(function()
     while true do
         task.wait(0.5)
         if _G.AutoFarm then
             pcall(function()
-                local char = Player.Character
-                if char then
-                    local hrp = char:FindFirstChild("HumanoidRootPart")
-                    if hrp and hrp.Velocity.Y < -40 then
-                        hrp.Velocity = Vector3.new(hrp.Velocity.X, 0, hrp.Velocity.Z)
-                    end
+                if HRP and HRP.Velocity.Y < -40 then
+                    HRP.Velocity = Vector3.new(HRP.Velocity.X, 0, HRP.Velocity.Z)
                 end
             end)
         end
@@ -111,7 +115,7 @@ end)
 task.spawn(function()
     while true do
         task.wait(_G.AttackDelay)
-        if _G.AutoFarm and not _G.Busy then
+        if _G.AutoFarm and not _G.Busy and _G.State == "FARMING" then
             pcall(function()
                 VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, 0)
                 task.wait(0.05)
@@ -127,12 +131,8 @@ task.spawn(function()
         task.wait(0.15)
         if _G.AutoFarm and _G.BringMob and not _G.Busy and _G.State == "FARMING" then
             pcall(function()
-                local char = Player.Character
-                if not char then return end
-                local hrp = char:FindFirstChild("HumanoidRootPart")
-                if not hrp then return end
-                
-                local targetPos = hrp.Position + (hrp.CFrame.LookVector * 12) + Vector3.new(0, 3, 0)
+                if not HRP then return end
+                local targetPos = HRP.Position + (HRP.CFrame.LookVector * 12) + Vector3.new(0, 3, 0)
                 local enemies = workspace:FindFirstChild("Enemies")
                 
                 if enemies then
@@ -140,9 +140,9 @@ task.spawn(function()
                         if v:FindFirstChild("Humanoid") and v:FindFirstChild("HumanoidRootPart") then
                             local enemyHrp = v.HumanoidRootPart
                             local enemyHum = v.Humanoid
-                            local dist = (enemyHrp.Position - hrp.Position).Magnitude
+                            local dist = (enemyHrp.Position - HRP.Position).Magnitude
                             
-                            if enemyHum.Health > 0 and dist <= 20 and dist > 8 then
+                            if enemyHum.Health > 0 and dist <= 25 and dist > 8 then
                                 enemyHrp.CFrame = CFrame.new(targetPos)
                                 enemyHrp.Velocity = Vector3.new(0, 0, 0)
                             end
@@ -154,9 +154,9 @@ task.spawn(function()
     end
 end)
 
--- ==================== QUEST DATABASE FULL (Lv 1-2600 ALL SEAS) ====================
+-- ==================== QUEST DATABASE FULL (Lv 1-2600) ====================
 local QuestDB = {
-    [1] = { -- 🌊 SEA 1 (Lv 1-700)
+    [1] = { -- SEA 1 (Lv 1-700)
         {LvMin=0, LvMax=14, QuestName="BanditQuest1", NPCPos=Vector3.new(1061,16,1548), MobName="Bandit", MobArea=Vector3.new(1100,13,1480)},
         {LvMin=15, LvMax=29, QuestName="JungleQuest", NPCPos=Vector3.new(-1400,37,90), MobName="Monkey", MobArea=Vector3.new(-1200,68,320)},
         {LvMin=30, LvMax=59, QuestName="JungleQuest", NPCPos=Vector3.new(-1250,37,1600), MobName="Gorilla", MobArea=Vector3.new(-1280,37,1580)},
@@ -169,7 +169,7 @@ local QuestDB = {
         {LvMin=550, LvMax=699, QuestName="ViceQuest", NPCPos=Vector3.new(-4716,9,2993), MobName="Vice Admiral", MobArea=Vector3.new(-4740,9,2970)},
         {LvMin=700, LvMax=700, QuestName="SaberExpertQuest", NPCPos=Vector3.new(923,65,14280), MobName="Saber Expert", MobArea=Vector3.new(900,65,14250)},
     },
-    [2] = { -- 🌴 SEA 2 (Lv 700-1500)
+    [2] = { -- SEA 2 (Lv 700-1500)
         {LvMin=700, LvMax=799, QuestName="BartiloQuest", NPCPos=Vector3.new(-1859,13,1729), MobName="Pirate Millionaire", MobArea=Vector3.new(-1820,13,1750)},
         {LvMin=800, LvMax=874, QuestName="CaptainEleQuest", NPCPos=Vector3.new(-1370,30,92), MobName="Captain Elephant", MobArea=Vector3.new(-1400,30,120)},
         {LvMin=875, LvMax=899, QuestName="BeautifulPirateQuest", NPCPos=Vector3.new(5815,18,-2726), MobName="Beautiful Pirate", MobArea=Vector3.new(5790,18,-2750)},
@@ -189,40 +189,40 @@ local QuestDB = {
         {LvMin=1475, LvMax=1499, QuestName="IslandEmperorQuest", NPCPos=Vector3.new(5400,605,918), MobName="Island Emperor", MobArea=Vector3.new(5370,605,890)},
         {LvMin=1500, LvMax=1500, QuestName="TideKeeperQuest", NPCPos=Vector3.new(3879,38,-3346), MobName="Tide Keeper", MobArea=Vector3.new(3850,38,-3370)},
     },
-    [3] = { -- ⚓ SEA 3 (Lv 1500-2600 MAX)
-        {LvMin=1575, LvMax=1624, QuestName="MansionQuest1", NPCPos=Vector3.new(-12463,332,8792), MobName="Reborn Skeleton", MobArea=Vector3.new(-12490,332,8770)},
-        {LvMin=1625, LvMax=1674, QuestName="MansionQuest2", NPCPos=Vector3.new(-12463,332,8792), MobName="Reborn Sniper", MobArea=Vector3.new(-12490,332,8770)},
-        {LvMin=1675, LvMax=1724, QuestName="PreInstructorQuest", NPCPos=Vector3.new(-425,216,1837), MobName="Fajita", MobArea=Vector3.new(-450,216,1810)},
-        {LvMin=1725, LvMax=1774, QuestName="InstructorQuest", NPCPos=Vector3.new(-425,216,1837), MobName="Instructor", MobArea=Vector3.new(-450,216,1810)},
-        {LvMin=1775, LvMax=1824, QuestName="SnowMountainQuest", NPCPos=Vector3.new(1342,454,-1495), MobName="Snow Mountain", MobArea=Vector3.new(1310,454,-1520)},
-        {LvMin=1825, LvMax=1874, QuestName="SnowMountainQuest2", NPCPos=Vector3.new(1342,454,-1495), MobName="Snow Mountain", MobArea=Vector3.new(1310,454,-1520)},
-        {LvMin=1875, LvMax=1924, QuestName="SnowCommandoQuest", NPCPos=Vector3.new(2313,151,2649), MobName="Snow Commando", MobArea=Vector3.new(2280,151,2620)},
-        {LvMin=1925, LvMax=1974, QuestName="DesertQuest", NPCPos=Vector3.new(2293,23,7154), MobName="Desert Officer", MobArea=Vector3.new(2260,23,7130)},
-        {LvMin=1975, LvMax=2024, QuestName="PincerQuest", NPCPos=Vector3.new(-1347,458,3089), MobName="Pincer", MobArea=Vector3.new(-1370,458,3060)},
-        {LvMin=2025, LvMax=2074, QuestName="FactoryStaffQuest", NPCPos=Vector3.new(296,48,-541), MobName="Factory Staff", MobArea=Vector3.new(270,48,-560)},
-        {LvMin=2075, LvMax=2124, QuestName="DemonicSoulQuest", NPCPos=Vector3.new(-9479,142,5566), MobName="Demonic Soul", MobArea=Vector3.new(-9500,142,5540)},
-        {LvMin=2125, LvMax=2174, QuestName="HeavenlyKingQuest", NPCPos=Vector3.new(-7862,5547,2017), MobName="Heavenly King", MobArea=Vector3.new(-7890,5547,1990)},
-        {LvMin=2175, LvMax=2224, QuestName="CursedCaptainQuest", NPCPos=Vector3.new(-6470,89,-1325), MobName="Cursed Captain", MobArea=Vector3.new(-6500,89,-1350)},
-        {LvMin=2225, LvMax=2274, QuestName="CaptainEleQuest2", NPCPos=Vector3.new(-1370,30,92), MobName="Captain Elephant", MobArea=Vector3.new(-1400,30,120)},
-        {LvMin=2275, LvMax=2324, QuestName="BeautifulPirateQuest2", NPCPos=Vector3.new(5815,18,-2726), MobName="Beautiful Pirate", MobArea=Vector3.new(5790,18,-2750)},
-        {LvMin=2325, LvMax=2374, QuestName="LongmaQuest2", NPCPos=Vector3.new(932,66,1819), MobName="Longma", MobArea=Vector3.new(910,66,1790)},
-        {LvMin=2375, LvMax=2424, QuestName="LaboratoryQuest2", NPCPos=Vector3.new(6570,402,-7411), MobName="Lab Subordinate", MobArea=Vector3.new(6540,402,-7440)},
-        {LvMin=2425, LvMax=2474, QuestName="IslandEmperorQuest2", NPCPos=Vector3.new(5400,605,918), MobName="Island Emperor", MobArea=Vector3.new(5370,605,890)},
-        {LvMin=2475, LvMax=2524, QuestName="TideKeeperQuest2", NPCPos=Vector3.new(3879,38,-3346), MobName="Tide Keeper", MobArea=Vector3.new(3850,38,-3370)},
-        {LvMin=2525, LvMax=2600, QuestName="EliteHunterQuest", NPCPos=Vector3.new(-5418,314,-2667), MobName="Elite Hunter", MobArea=Vector3.new(-5440,314,-2690)},
+    [3] = { -- SEA 3 (Lv 1500-2600)
+        {LvMin=1501, LvMax=1574, QuestName="MansionQuest1", NPCPos=Vector3.new(-12463,332,8792), MobName="Reborn Skeleton", MobArea=Vector3.new(-12490,332,8770)},
+        {LvMin=1575, LvMax=1624, QuestName="MansionQuest2", NPCPos=Vector3.new(-12463,332,8792), MobName="Reborn Sniper", MobArea=Vector3.new(-12490,332,8770)},
+        {LvMin=1625, LvMax=1674, QuestName="PreInstructorQuest", NPCPos=Vector3.new(-425,216,1837), MobName="Fajita", MobArea=Vector3.new(-450,216,1810)},
+        {LvMin=1675, LvMax=1724, QuestName="InstructorQuest", NPCPos=Vector3.new(-425,216,1837), MobName="Instructor", MobArea=Vector3.new(-450,216,1810)},
+        {LvMin=1725, LvMax=1774, QuestName="SnowMountainQuest", NPCPos=Vector3.new(1342,454,-1495), MobName="Snow Mountain", MobArea=Vector3.new(1310,454,-1520)},
+        {LvMin=1775, LvMax=1824, QuestName="SnowMountainQuest2", NPCPos=Vector3.new(1342,454,-1495), MobName="Snow Mountain", MobArea=Vector3.new(1310,454,-1520)},
+        {LvMin=1825, LvMax=1874, QuestName="SnowCommandoQuest", NPCPos=Vector3.new(2313,151,2649), MobName="Snow Commando", MobArea=Vector3.new(2280,151,2620)},
+        {LvMin=1875, LvMax=1924, QuestName="DesertQuest", NPCPos=Vector3.new(2293,23,7154), MobName="Desert Officer", MobArea=Vector3.new(2260,23,7130)},
+        {LvMin=1925, LvMax=1974, QuestName="PincerQuest", NPCPos=Vector3.new(-1347,458,3089), MobName="Pincer", MobArea=Vector3.new(-1370,458,3060)},
+        {LvMin=1975, LvMax=2024, QuestName="FactoryStaffQuest", NPCPos=Vector3.new(296,48,-541), MobName="Factory Staff", MobArea=Vector3.new(270,48,-560)},
+        {LvMin=2025, LvMax=2074, QuestName="DemonicSoulQuest", NPCPos=Vector3.new(-9479,142,5566), MobName="Demonic Soul", MobArea=Vector3.new(-9500,142,5540)},
+        {LvMin=2075, LvMax=2124, QuestName="HeavenlyKingQuest", NPCPos=Vector3.new(-7862,5547,2017), MobName="Heavenly King", MobArea=Vector3.new(-7890,5547,1990)},
+        {LvMin=2125, LvMax=2174, QuestName="CursedCaptainQuest", NPCPos=Vector3.new(-6470,89,-1325), MobName="Cursed Captain", MobArea=Vector3.new(-6500,89,-1350)},
+        {LvMin=2175, LvMax=2224, QuestName="CaptainEleQuest2", NPCPos=Vector3.new(-1370,30,92), MobName="Captain Elephant", MobArea=Vector3.new(-1400,30,120)},
+        {LvMin=2225, LvMax=2274, QuestName="BeautifulPirateQuest2", NPCPos=Vector3.new(5815,18,-2726), MobName="Beautiful Pirate", MobArea=Vector3.new(5790,18,-2750)},
+        {LvMin=2275, LvMax=2324, QuestName="LongmaQuest2", NPCPos=Vector3.new(932,66,1819), MobName="Longma", MobArea=Vector3.new(910,66,1790)},
+        {LvMin=2325, LvMax=2374, QuestName="LaboratoryQuest2", NPCPos=Vector3.new(6570,402,-7411), MobName="Lab Subordinate", MobArea=Vector3.new(6540,402,-7440)},
+        {LvMin=2375, LvMax=2424, QuestName="IslandEmperorQuest2", NPCPos=Vector3.new(5400,605,918), MobName="Island Emperor", MobArea=Vector3.new(5370,605,890)},
+        {LvMin=2425, LvMax=2474, QuestName="TideKeeperQuest2", NPCPos=Vector3.new(3879,38,-3346), MobName="Tide Keeper", MobArea=Vector3.new(3850,38,-3370)},
+        {LvMin=2475, LvMax=2600, QuestName="EliteHunterQuest", NPCPos=Vector3.new(-5418,314,-2667), MobName="Elite Hunter", MobArea=Vector3.new(-5440,314,-2690)},
     }
 }
 
--- Lấy Sea hiện tại dựa vào level
+-- Lấy Sea hiện tại
 function GetCurrentSea(level)
     if level >= 1500 then return 3
     elseif level >= 700 then return 2
     else return 1 end
 end
 
--- Kiểm tra quest đã được nhận chưa
+-- Kiểm tra quest đã nhận
 function IsQuestAccepted()
-    pcall(function()
+    local success, result = pcall(function()
         local playerGui = Player:FindFirstChild("PlayerGui")
         if playerGui and playerGui:FindFirstChild("Main") then
             local quest = playerGui.Main:FindFirstChild("Quest")
@@ -244,7 +244,7 @@ function GetNearestMob(mobName)
         if mob.Name:find(mobName) and mob:FindFirstChild("HumanoidRootPart") then
             local hum = mob:FindFirstChild("Humanoid")
             if hum and hum.Health > 0 then
-                local dist = (HumanoidRootPart.Position - mob.HumanoidRootPart.Position).Magnitude
+                local dist = (HRP.Position - mob.HumanoidRootPart.Position).Magnitude
                 if dist < closestDist then
                     closest = mob
                     closestDist = dist
@@ -255,131 +255,107 @@ function GetNearestMob(mobName)
     return closest
 end
 
--- ==================== STATE MACHINE AUTO QUEST ====================
+-- ==================== STATE MACHINE (FIX COMPLETE) ====================
 local function RunStateMachine()
-    if not _G.AutoFarm then return end
-    if _G.Busy then return end
+    if not _G.AutoFarm or _G.Busy then return end
     
-    _G.Busy = true
+    print("🐛 CURRENT STATE:", _G.State)
     
     if _G.State == "IDLE" or _G.State == "CHECK_QUEST" then
-        warn("🔍 [CHECK_QUEST] Kiểm tra level & quest...")
-        local level = Player.Data.Level.Value
+        local level = Player.Data.Level.Value or 1
         local sea = GetCurrentSea(level)
+        print("🔍 Lv:", level, "Sea:", sea)
         
         if level >= 2600 then
-            warn("🎉 ĐÃ MAX LV 2600 - Hoàn thành!")
-            _G.Busy = false
+            print("🎉 MAX LEVEL 2600!")
+            _G.State = "IDLE"
             return
         end
         
-        local found = false
         for _, quest in ipairs(QuestDB[sea]) do
             if level >= quest.LvMin and level <= quest.LvMax then
                 _G.CurrentQuest = quest
-                found = true
-                warn("✅ Tìm quest phù hợp:", quest.QuestName, "Lv:", level, "Sea:", sea)
+                print("✅ SELECTED:", quest.QuestName)
                 _G.State = "GET_QUEST"
-                break
+                return
             end
-        end
-        
-        if not found then
-            warn("❌ Không tìm thấy quest phù hợp")
-            _G.State = "CHECK_QUEST"
         end
         
     elseif _G.State == "GET_QUEST" then
+        print("📥 GET_QUEST")
         if IsQuestAccepted() then
-            warn("✅ Quest GUI đã hiện, bỏ qua nhận quest")
+            print("✅ HAVE QUEST -> MOVING_TO_FARM")
             _G.State = "MOVING_TO_FARM"
-        else
-            warn("✈️ [GET_QUEST] Bay đến NPC:", _G.CurrentQuest.QuestName)
-            TweenToPosition(_G.CurrentQuest.NPCPos + Vector3.new(0, 12, 0))
-            task.wait(1)
-            
-            -- Gọi nhận quest
-            local remote = ReplicatedStorage:FindFirstChild("Remotes")
-            if remote then
-                local commF = remote:FindFirstChild("CommF_")
-                if commF then
-                    for i = 1, 3 do
-                        pcall(function()
-                            commF:InvokeServer("StartQuest", _G.CurrentQuest.QuestName, i)
-                        end)
-                        task.wait(0.3)
-                    end
-                end
-            end
-            
-            task.wait(1)
-            if IsQuestAccepted() then
-                warn("✅ Đã nhận quest thành công!")
-                _G.State = "MOVING_TO_FARM"
-            else
-                warn("❌ Nhận quest thất bại, thử lại...")
-                _G.State = "GET_QUEST"
-            end
+            return
         end
         
-    elseif _G.State == "MOVING_TO_FARM" then
-        warn("🚶 [MOVING_TO_FARM] Di chuyển đến khu farm...")
-        local farmPos = _G.CurrentQuest.MobArea or (_G.CurrentQuest.NPCPos + Vector3.new(math.random(-80,80), 15, math.random(-80,80)))
-        TweenToPosition(farmPos)
+        print("✈️ FLY TO NPC")
+        SafeTween(CFrame.new(_G.CurrentQuest.NPCPos + Vector3.new(0, 12, 0)))
+        task.wait(2)
+        
+        for i = 1, 3 do
+            pcall(function()
+                local result = ReplicatedStorage.Remotes.CommF_:InvokeServer("StartQuest", _G.CurrentQuest.QuestName, i)
+                print("📡 Quest ID", i, "result:", result)
+            end)
+            task.wait(0.5)
+        end
         task.wait(1)
+        
+    elseif _G.State == "MOVING_TO_FARM" then
+        print("🚶 MOVING_TO_FARM")
+        local farmPos = _G.CurrentQuest.MobArea or (_G.CurrentQuest.NPCPos + Vector3.new(math.random(-60,60), 15, math.random(-60,60)))
+        SafeTween(CFrame.new(farmPos))
         _G.State = "FARMING"
         
     elseif _G.State == "FARMING" then
-        local farmCount = 0
-        local maxFarm = 50
+        print("⚔️ FARMING:", _G.CurrentQuest.MobName)
         
-        repeat
-            -- Kiểm tra quest hoàn thành
-            if not IsQuestAccepted() then
-                warn("✅ Quest hoàn thành, quay lại CHECK_QUEST")
-                _G.State = "CHECK_QUEST"
-                break
-            end
-            
-            local targetMob = GetNearestMob(_G.CurrentQuest.MobName)
-            if targetMob then
-                TweenToPosition(targetMob.HumanoidRootPart.Position + Vector3.new(0, 5, 0))
-                VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, 0)
-                task.wait(0.05)
-                VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, game, 0)
-                farmCount = farmCount + 1
-            else
-                -- Di chuyển random trong khu vực farm
-                local randomPos = (_G.CurrentQuest.MobArea or _G.CurrentQuest.NPCPos) + Vector3.new(math.random(-50,50), 15, math.random(-50,50))
-                TweenToPosition(randomPos)
-            end
-            task.wait(0.2)
-        until farmCount >= maxFarm
+        -- Kiểm tra quest hoàn thành
+        if not IsQuestAccepted() then
+            print("✅ QUEST DONE -> CHECK_QUEST")
+            _G.State = "CHECK_QUEST"
+            return
+        end
         
-        _G.State = "CHECK_QUEST"
+        local mob = GetNearestMob(_G.CurrentQuest.MobName)
+        if mob then
+            print("🎯 MOB FOUND -> ATTACK")
+            SafeTween(CFrame.new(mob.HumanoidRootPart.Position + Vector3.new(0, 5, 0)))
+        else
+            print("❌ NO MOB -> RANDOM WALK")
+            local randPos = (_G.CurrentQuest.MobArea or _G.CurrentQuest.NPCPos) + Vector3.new(math.random(-40,40), 15, math.random(-40,40))
+            SafeTween(CFrame.new(randPos))
+        end
     end
-    
-    _G.Busy = false
 end
 
--- Main loop chạy State Machine
+-- ==================== MAIN LOOP ====================
 task.spawn(function()
     while true do
-        task.wait(0.5)
+        task.wait(1.5)
         if _G.AutoFarm then
             pcall(RunStateMachine)
-        else
-            _G.State = "IDLE"
-            _G.CurrentQuest = nil
         end
     end
 end)
 
--- ==================== CHARACTER SPAWN HANDLER ====================
-Player.CharacterAdded:Connect(function(newChar)
-    task.wait(0.5)
+-- ==================== UI STATUS REAL-TIME ====================
+task.spawn(function()
+    while true do
+        task.wait(2)
+        if _G.AutoFarm then
+            print("📊 Lv:", Player.Data.Level.Value, "| State:", _G.State, "| Quest:", _G.CurrentQuest and _G.CurrentQuest.QuestName or "None")
+        end
+    end
+end)
+
+-- ==================== CHARACTER RESPAWN ====================
+Player.CharacterAdded:Connect(function()
+    task.wait(1)
     _G.Busy = false
     _G.State = "CHECK_QUEST"
+    UpdateHRP()
 end)
 
 -- ==================== UI ====================
@@ -392,8 +368,7 @@ farmGroup:AddButton({
         _G.Busy = false
         _G.State = "CHECK_QUEST"
         ToggleNoclip(true)
-        print("✅ Auto Farm đã BẬT | Mục tiêu: Level 1 → 2600 MAX")
-        print("📌 State Machine: CHECK_QUEST")
+        print("✅ Auto Farm đã BẬT | Mục tiêu: Level 1 → 2600")
     end
 })
 
@@ -413,7 +388,7 @@ farmGroup:AddButton({
     Title = "📦 BẬT GOM QUÁI",
     Callback = function()
         _G.BringMob = true
-        print("✅ Bring Mob BẬT (chỉ chạy khi đang FARMING)")
+        print("✅ Bring Mob BẬT")
     end
 })
 
@@ -449,8 +424,7 @@ settingGroup:AddSlider({
 UI.ToggleUI()
 print("=" .. string.rep("=", 50))
 print("✅ Apple Hub Premium - AUTO QUEST 1-2600 MAX!")
-print("📌 State Machine: IDLE → CHECK_QUEST → GET_QUEST → MOVING_TO_FARM → FARMING")
-print("📌 Có _G.Busy chống giật, Noclip chuyên nghiệp")
-print("📌 Full Database 3 Seas: Sea 1 (1-700) | Sea 2 (700-1500) | Sea 3 (1500-2600)")
+print("📌 State Machine: CHECK_QUEST → GET_QUEST → MOVING_TO_FARM → FARMING")
+print("📌 SafeTween + Noclip + Auto Attack + Bring Mob")
 print("📌 Hướng dẫn: Bấm 'BẬT AUTO FARM' để bắt đầu")
 print("=" .. string.rep("=", 50)) 
