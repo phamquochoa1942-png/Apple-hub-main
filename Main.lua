@@ -24,7 +24,7 @@ local VirtualInputManager = game:GetService("VirtualInputManager")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Player = Players.LocalPlayer
 
--- ==================== LOGIC BAY (GIỮ NGUYÊN TỪ CODE CŨ) ====================
+-- ==================== LOGIC BAY (LẤY TỪ CODE CỦA BẠN) ====================
 local currentTween = nil
 
 function StopTween()
@@ -36,7 +36,6 @@ end
 
 function TweenToPosition(Position)
     if not _G.AutoFarm then return false end
-    if _G.Busy then return false end
     StopTween()
     
     local success = pcall(function()
@@ -259,7 +258,7 @@ task.spawn(function()
     end
 end)
 
--- ==================== MAIN LOOP FARM (LOGIC AUTO QUEST MỚI NHẤT) ====================
+-- ==================== MAIN LOOP FARM ====================
 task.spawn(function()
     while true do
         task.wait(0.5)
@@ -284,6 +283,9 @@ task.spawn(function()
                     if not success then
                         warn("⚠️ Nhận thất bại, đợi 2 giây thử lại...")
                         task.wait(2)
+                    else
+                        -- Nếu nhận thành công, đợi server cập nhật
+                        task.wait(1.5)
                     end
                     
                     _G.Busy = false -- Mở khóa sau khi xong quá trình nhận
@@ -364,9 +366,9 @@ settingGroup:AddSlider({
 -- ==================== HIỂN THỊ UI ====================
 UI.ToggleUI()
 print("=" .. string.rep("=", 40))
-print("✅ Apple Hub Premium - AUTO QUEST ĐÃ GHÉP HOÀN CHỈNH!")
-print("📌 Logic bay: Giữ nguyên từ code cũ")
-print("📌 Logic auto quest: Mới nhất, có _G.Busy chống giật")
+print("✅ Apple Hub Premium - HOÀN CHỈNH!")
+print("📌 Logic bay: Từ code của bạn (TweenService)")
+print("📌 Logic auto quest: Có _G.Busy chống giật")
 print("📌 Bay cao hơn NPC 12-15 studs để tránh kẹt")
 print("📌 Hướng dẫn: Bấm 'BẬT AUTO FARM' để bắt đầu")
 print("=" .. string.rep("=", 40)) 
