@@ -13,14 +13,13 @@ local settingTab = window:AddTab("⚙️ Settings")
 -- ==================== BIẾN CẤU HÌNH ====================
 _G.AutoFarm = false
 _G.BringMob = true
-_G.AutoHaki = true
 _G.TweenSpeed = 420
 _G.AttackDelay = 0.06
 _G.State = "CHECK_QUEST"
 _G.CurrentQuest = nil
 _G.Busy = false
 _G.LastBringTime = 0
-_G.FlyHeight = 9
+_G.FlyHeight = 8
 
 -- ==================== SERVICE ====================
 local Players = game:GetService("Players")
@@ -37,6 +36,7 @@ local playerGui = Player:WaitForChild("PlayerGui")
 local Character, HRP
 local humanoid = nil
 local bodyVelocity = nil
+local hakiEnabled = false
 
 function UpdateHRP()
     Character = Player.Character or Player.CharacterAdded:Wait()
@@ -71,6 +71,59 @@ function ToggleNoclip(enable)
         end
     end
 end
+
+-- ==================== TỰ ĐỘNG BẬT HAKI KHI SCRIPT CHẠY ====================
+function EnableHaki()
+    pcall(function()
+        -- Cách 1: Gọi Remote bật Haki
+        local remote = game:GetService("ReplicatedStorage"):FindFirstChild("Remotes")
+        if remote and remote:FindFirstChild("CommF_") then
+            remote.CommF_:InvokeServer("Enhancement", true)
+            print("✅ Đã bật Haki (Enhancement)")
+            hakiEnabled = true
+            return
+        end
+        
+        -- Cách 2: Dùng KeyCode (phím B)
+        pcall(function()
+            local VirtualUser = game:GetService("VirtualUser")
+            VirtualUser:CaptureController()
+            VirtualUser:KeyDown("0x42") -- Phím B
+            print("✅ Đã bật Haki (Key B)")
+            hakiEnabled = true
+        end)
+    end)
+end
+
+-- Kiểm tra Haki đã bật chưa
+function IsHakiEnabled()
+    pcall(function()
+        local playerGui = Player:FindFirstChild("PlayerGui")
+        if playerGui then
+            for _, v in pairs(playerGui:GetDescendants()) do
+                if v:IsA("Frame") and v.Name == "HakiIcon" and v.Visible then
+                    return true
+                end
+            end
+        end
+    end)
+    return hakiEnabled
+end
+
+-- Bật Haki ngay khi script chạy
+EnableHaki()
+
+-- Kiểm tra và bật lại Haki mỗi 10 giây
+task.spawn(function()
+    while true do
+        task.wait(10)
+        if _G.AutoFarm then
+            if not IsHakiEnabled() then
+                EnableHaki()
+            end
+        end
+    end
+end)
 
 -- ==================== TWEEN CONTROL ====================
 local currentTween = nil
@@ -175,56 +228,7 @@ task.spawn(function()
     end
 end)
 
--- ==================== TỰ ĐỘNG BẬT HAKI (ENHANCEMENT) ====================
-function EnableHaki()
-    if not _G.AutoHaki then return end
-    
-    pcall(function()
-        -- Cách 1: Gọi Remote bật Haki
-        local remote = game:GetService("ReplicatedStorage"):FindFirstChild("Remotes")
-        if remote and remote:FindFirstChild("CommF_") then
-            remote.CommF_:InvokeServer("Enhancement", true)
-            print("✅ Đã bật Haki (Enhancement)")
-            return
-        end
-        
-        -- Cách 2: Dùng KeyCode (nếu Remote không được)
-        pcall(function()
-            local VirtualUser = game:GetService("VirtualUser")
-            VirtualUser:CaptureController()
-            VirtualUser:ClickButton1(Vector2.new(0, 0))
-            VirtualUser:KeyDown("0x42") -- Phím B
-        end)
-    end)
-end
-
--- Kiểm tra Haki đã bật chưa
-function IsHakiEnabled()
-    pcall(function()
-        local playerGui = Player:FindFirstChild("PlayerGui")
-        if playerGui then
-            local hakiIcon = playerGui:FindFirstChild("HakiIcon")
-            if hakiIcon and hakiIcon.Visible then
-                return true
-            end
-        end
-    end)
-    return false
-end
-
--- Luôn bật Haki khi farm
-task.spawn(function()
-    while true do
-        task.wait(5)
-        if _G.AutoFarm and _G.AutoHaki and _G.State == "FARMING" then
-            if not IsHakiEnabled() then
-                EnableHaki()
-            end
-        end
-    end
-end)
-
--- ==================== AUTO ATTACK (TẦM XA, XỊN) ====================
+-- ==================== AUTO ATTACK (FIX HITBOX - ĐÁNH TRÚNG) ====================
 local lastAttack = 0
 
 function DoAttack()
@@ -233,7 +237,7 @@ function DoAttack()
         lastAttack = now
         
         pcall(function()
-            -- CÁCH 1: VirtualInputManager (M1)
+            -- CÁCH 1: VirtualInputManager (M1 chuẩn)
             VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, 0)
             task.wait(0.01)
             VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, game, 0)
@@ -241,23 +245,12 @@ function DoAttack()
             -- CÁCH 2: ContextActionService
             ContextActionService:PressButton("Attack")
             
-            -- CÁCH 3: VirtualUser (TẦM XA HƠN)
+            -- CÁCH 3: VirtualUser (Click chuột)
             local vu = game:GetService("VirtualUser")
             vu:CaptureController()
             vu:ClickButton1(Vector2.new(0, 0))
             
-            -- CÁCH 4: UserInputService (Mở rộng tầm đánh)
-            pcall(function()
-                UserInputService:SetPlatform(UserInputService.Platform)
-                local mouse = Player:GetMouse()
-                if mouse then
-                    mouse.Button1Down:Fire()
-                    task.wait(0.01)
-                    mouse.Button1Up:Fire()
-                end
-            end)
-            
-            -- CÁCH 5: FireRemote trực tiếp (tăng sát thương)
+            -- CÁCH 4: FireRemote tấn công trực tiếp
             pcall(function()
                 local remote = ReplicatedStorage:FindFirstChild("Remotes")
                 if remote and remote:FindFirstChild("CommF_") then
@@ -268,31 +261,23 @@ function DoAttack()
     end
 end
 
--- Auto equip weapon + bật Haki trước khi đánh
+-- Auto equip weapon trước khi đánh
 task.spawn(function()
     while true do
         task.wait(0.03)
         if _G.AutoFarm and not isTweening and _G.State == "FARMING" then
-            -- Trang bị vũ khí mạnh nhất (Melee)
             pcall(function()
                 local remote = ReplicatedStorage:FindFirstChild("Remotes")
                 if remote and remote:FindFirstChild("CommF_") then
                     remote.CommF_:InvokeServer("EquipTool", "Melee")
                 end
             end)
-            
-            -- Bật Haki nếu chưa bật
-            if _G.AutoHaki and not IsHakiEnabled() then
-                EnableHaki()
-            end
-            
-            -- Đánh
             DoAttack()
         end
     end
 end)
 
--- ==================== BRING MOB (KÉO XUỐNG ĐẤT) ====================
+-- ==================== BRING MOB ====================
 function BringMobs()
     if not _G.AutoFarm or not _G.BringMob then return end
     if isTweening then return end
@@ -349,10 +334,6 @@ function BringMobs()
                         mob.Humanoid.Animator:Destroy()
                     end
                 end)
-            end
-            
-            if bringCount > 0 then
-                print("📦 Đã gom " .. bringCount .. " quái xuống đất")
             end
         end
     end)
@@ -550,9 +531,6 @@ function AutoFarmChanged()
             _G.Busy = false
             isTweening = false
             _G.State = "CHECK_QUEST"
-            if _G.AutoHaki then
-                EnableHaki()
-            end
             print("🔄 AUTO FARM ON - FULL RESET")
         else
             StopAll()
@@ -580,7 +558,8 @@ farmGroup:AddButton({
     Title = "▶️ BẬT AUTO FARM",
     Callback = function()
         _G.AutoFarm = true
-        print("✅ Auto Farm đã BẬT")
+        EnableHaki()
+        print("✅ Auto Farm đã BẬT + Haki đã bật")
     end
 })
 
@@ -597,7 +576,7 @@ farmGroup:AddButton({
     Title = "📦 BẬT GOM QUÁI",
     Callback = function()
         _G.BringMob = true
-        print("✅ Bring Mob BẬT - Kéo quái xuống đất")
+        print("✅ Bring Mob BẬT")
     end
 })
 
@@ -606,23 +585,6 @@ farmGroup:AddButton({
     Callback = function()
         _G.BringMob = false
         print("⏸️ Bring Mob TẮT")
-    end
-})
-
-farmGroup:AddButton({
-    Title = "⚡ BẬT HAKI (Enhancement)",
-    Callback = function()
-        _G.AutoHaki = true
-        EnableHaki()
-        print("✅ Tự động bật Haki")
-    end
-})
-
-farmGroup:AddButton({
-    Title = "⚡ TẮT HAKI",
-    Callback = function()
-        _G.AutoHaki = false
-        print("⏸️ Tự động bật Haki đã TẮT")
     end
 })
 
@@ -637,7 +599,7 @@ settingGroup:AddSlider({
 })
 
 settingGroup:AddSlider({
-    Title = "⚔️ Delay đánh (0.06 siêu nhanh)",
+    Title = "⚔️ Delay đánh",
     Min = 0.05,
     Max = 0.3,
     Default = 0.06,
@@ -647,17 +609,16 @@ settingGroup:AddSlider({
 
 settingGroup:AddSlider({
     Title = "🗻 Độ cao bay",
-    Min = 6,
+    Min = 5,
     Max = 15,
-    Default = 9,
+    Default = 8,
     Callback = function(v) _G.FlyHeight = v end
 })
 
 UI.ToggleUI()
 print("=" .. string.rep("=", 50))
-print("✅ AUTO FARM CAO CẤP - HITBOX XA + TỰ BẬT HAKI!")
-print("📌 Hitbox: 5 cách đánh khác nhau, tầm xa 30 studs")
-print("📌 Tự động bật Haki (Enhancement) - tăng sát thương")
-print("📌 Gom quái kéo xuống đất, đánh trúng dễ dàng")
+print("✅ AUTO FARM CAO CẤP - HAKI TỰ ĐỘNG BẬT!")
+print("📌 Haki tự bật khi script chạy, không cần nút")
+print("📌 Hitbox: 4 cách đánh khác nhau")
 print("📌 Bấm 'BẬT AUTO FARM' để bắt đầu")
 print("=" .. string.rep("=", 50)) 
