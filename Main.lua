@@ -15,8 +15,9 @@ _G.AutoFarm = false
 _G.BringMob = false
 _G.TweenSpeed = 300
 _G.AttackDelay = 0.2
-_G.State = "IDLE"
+_G.State = "CHECK_QUEST"
 _G.CurrentQuest = nil
+_G.Busy = false
 
 -- ==================== SERVICE ====================
 local Players = game:GetService("Players")
@@ -25,6 +26,7 @@ local VirtualInputManager = game:GetService("VirtualInputManager")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local Player = Players.LocalPlayer
+local playerGui = Player:WaitForChild("PlayerGui")
 
 -- ==================== GLOBAL CHARACTER & HRP ====================
 local Character, HRP
@@ -62,12 +64,10 @@ function ToggleNoclip(enable)
     end
 end
 
--- ==================== PREMIUM TWEEN LOCK SYSTEM ====================
+-- ==================== TWEEN CONTROL ====================
 local currentTween = nil
 local isTweening = false
-local tweenLock = false
-local DISTANCE_THRESHOLD = 15
-local FARM_DISTANCE_THRESHOLD = 10
+local DISTANCE_THRESHOLD = 20
 
 function StopTween()
     if currentTween then
@@ -78,52 +78,71 @@ function StopTween()
         currentTween = nil
     end
     isTweening = false
-    tweenLock = false
 end
 
 function TweenToPosition(targetPos)
-    if tweenLock or isTweening then
-        print("🔒 TWEEN LOCKED - ĐANG DI CHUYỂN")
-        return nil
-    end
-    
-    StopTween()
-    
-    local char = Player.Character
-    if not char or not char:FindFirstChild("HumanoidRootPart") then
-        return nil
-    end
-    
-    local hrp = char.HumanoidRootPart
-    local distance = (hrp.Position - targetPos).Magnitude
-    
-    if distance < DISTANCE_THRESHOLD then
-        print("✅ ĐÃ GẦN MỤC TIÊU (" .. math.floor(distance) .. " studs)")
-        isTweening = false
-        tweenLock = false
-        return nil
-    end
-    
-    ToggleNoclip(true)
-    
-    local tweenTime = math.max(1.5, distance / _G.TweenSpeed)
-    local tweenInfo = TweenInfo.new(tweenTime, Enum.EasingStyle.Linear)
-    
-    isTweening = true
-    tweenLock = true
-    
-    currentTween = TweenService:Create(hrp, tweenInfo, {CFrame = CFrame.new(targetPos)})
-    currentTween:Play()
-    
-    currentTween.Completed:Connect(function()
-        local finalDistance = (hrp.Position - targetPos).Magnitude
-        ToggleNoclip(false)
-        isTweening = false
-        tweenLock = false
-        print("✅ TWEEN HOÀN THÀNH (" .. math.floor(finalDistance) .. " studs)")
+    pcall(function()
+        if _G.Busy then return end
+        
+        local char = Player.Character
+        if not char or not char:FindFirstChild("HumanoidRootPart") then
+            return
+        end
+        
+        local hrp = char.HumanoidRootPart
+        local distance = (hrp.Position - targetPos).Magnitude
+        
+        if distance < DISTANCE_THRESHOLD then
+            print("✅ ĐÃ ĐẾN NƠI (" .. math.floor(distance) .. " studs)")
+            return
+        end
+        
+        ToggleNoclip(true)
+        
+        if currentTween then
+            currentTween:Cancel()
+            currentTween:Destroy()
+        end
+        
+        isTweening = true
+        local tweenTime = math.max(2, distance / _G.TweenSpeed)
+        local tweenInfo = TweenInfo.new(tweenTime, Enum.EasingStyle.Linear)
+        
+        currentTween = TweenService:Create(hrp, tweenInfo, {CFrame = CFrame.new(targetPos)})
+        currentTween:Play()
+        
+        currentTween.Completed:Connect(function()
+            isTweening = false
+            ToggleNoclip(false)
+            print("✅ TWEEN HOÀN THÀNH")
+        end)
+        
+        currentTween.Canceled:Connect(function()
+            isTweening = false
+            ToggleNoclip(false)
+        end)
+        
+        -- TIMEOUT SAFETY
+        task.spawn(function()
+            task.wait(tweenTime + 3)
+            if isTweening then
+                isTweening = false
+                ToggleNoclip(false)
+                print("⏰ TWEEN TIMEOUT")
+            end
+        end)
     end)
-    
-    return currentTween
+end
+
+function StopAll()
+    if currentTween then
+        currentTween:Cancel()
+        currentTween:Destroy()
+        currentTween = nil
+    end
+    isTweening = false
+    _G.Busy = false
+    ToggleNoclip(false)
 end
 
 -- ==================== ANTI-FALL ====================
@@ -248,24 +267,24 @@ function GetCurrentSea(level)
     else return 1 end
 end
 
+-- ==================== PREMIUM IsQuestAccepted ====================
 function IsQuestAccepted()
     local success, result = pcall(function()
-        local playerGui = Player:FindFirstChild("PlayerGui")
-        if playerGui and playerGui:FindFirstChild("Main") then
-            local quest = playerGui.Main:FindFirstChild("Quest")
-            if quest and quest.Visible then
-                return true
-            end
-        end
+        local main = playerGui:FindFirstChild("Main")
+        if not main then return false end
+        
+        local questContainer = main:FindFirstChild("Quest") 
+            and main.Quest:FindFirstChild("Container")
+        if not questContainer then return false end
+        
+        local questTitle = questContainer:FindFirstChild("QuestTitle")
+        local isVisible = questContainer.Visible
+        local hasText = questTitle and questTitle.Text ~= ""
+        
+        return isVisible and hasText
     end)
-    return false
-end
-
-function GetSafeMobArea(npcPos)
-    if not _G.CurrentQuest.MobArea or (_G.CurrentQuest.MobArea - npcPos).Magnitude < 50 then
-        return npcPos + Vector3.new(math.random(100, 200), 50, math.random(100, 200))
-    end
-    return _G.CurrentQuest.MobArea
+    
+    return success and result or false
 end
 
 function GetNearestMob(mobName)
@@ -288,21 +307,16 @@ function GetNearestMob(mobName)
     return closest
 end
 
--- ==================== STATE MACHINE (PREMIUM) ====================
+-- ==================== STATE MACHINE (HUB STANDARD) ====================
 function RunStateMachine()
+    if not _G.AutoFarm or _G.Busy then return end
+    
     local char = Player.Character
-    if not char or not char:FindFirstChild("HumanoidRootPart") then
-        return
-    end
+    if not char or not char:FindFirstChild("HumanoidRootPart") then return end
     
     local hrp = char.HumanoidRootPart
     
-    if _G.State == "MOVING_TO_FARM" and (isTweening or tweenLock) then
-        print("🔒 MOVING_TO_FARM LOCKED - ĐANG BAY")
-        return
-    end
-    
-    if _G.State == "IDLE" or _G.State == "CHECK_QUEST" then
+    if _G.State == "CHECK_QUEST" then
         local level = Player.Data.Level.Value or 1
         local sea = GetCurrentSea(level)
         
@@ -321,33 +335,35 @@ function RunStateMachine()
         end
         
     elseif _G.State == "GET_QUEST" then
-        print("✈️ FLY TO NPC")
-        local npcTween = TweenToPosition(_G.CurrentQuest.NPCPos + Vector3.new(0, 12, 0))
+        local startTime = tick()
+        print("✈️ GET_QUEST START")
         
-        if npcTween then
-            npcTween.Completed:Wait()
-        end
+        TweenToPosition(_G.CurrentQuest.NPCPos + Vector3.new(0, 10, 0))
         
-        -- Nhận quest
-        for i = 1, 3 do
-            pcall(function()
-                local result = ReplicatedStorage.Remotes.CommF_:InvokeServer("StartQuest", _G.CurrentQuest.QuestName, i)
-                print("📡 Quest ID", i, "result:", result)
-            end)
-            task.wait(0.5)
-        end
-        task.wait(1)
+        repeat
+            task.wait(0.2)
+            if IsQuestAccepted() then
+                print("✅ QUEST ACCEPTED!")
+                task.wait(1)
+                _G.State = "MOVING_TO_FARM"
+                return
+            end
+        until tick() - startTime > 8
         
-        if IsQuestAccepted() then
-            print("✅ NHẬN QUEST THÀNH CÔNG")
-            _G.State = "MOVING_TO_FARM"
-        end
+        print("⏰ GET_QUEST TIMEOUT -> CHECK_QUEST")
+        _G.State = "CHECK_QUEST"
         
     elseif _G.State == "MOVING_TO_FARM" then
-        print("🌾 FLY TO FARM AREA")
-        local mobArea = GetSafeMobArea(_G.CurrentQuest.NPCPos)
+        print("🌾 MOVING TO FARM")
+        local mobArea = _G.CurrentQuest.MobArea or (_G.CurrentQuest.NPCPos + Vector3.new(150, 50, 150))
+        
         TweenToPosition(mobArea)
-        _G.State = "FARMING"
+        
+        local distance = (hrp.Position - mobArea).Magnitude
+        if distance < DISTANCE_THRESHOLD then
+            print("✅ ĐẾN BÃI FARM -> FARMING")
+            _G.State = "FARMING"
+        end
         
     elseif _G.State == "FARMING" then
         if not IsQuestAccepted() then
@@ -359,12 +375,31 @@ function RunStateMachine()
         local mob = GetNearestMob(_G.CurrentQuest.MobName)
         if mob then
             local mobPos = mob.HumanoidRootPart.Position
-            local distanceToMob = (HRP.Position - mobPos).Magnitude
+            local distanceToMob = (hrp.Position - mobPos).Magnitude
             
-            if distanceToMob > FARM_DISTANCE_THRESHOLD then
+            if distanceToMob > 10 then
                 TweenToPosition(mobPos + Vector3.new(0, 5, 0))
             end
         end
+    end
+end
+
+-- ==================== AUTO FARM TOGGLE ====================
+local oldAutoFarm = false
+
+function AutoFarmChanged()
+    if _G.AutoFarm ~= oldAutoFarm then
+        if _G.AutoFarm then
+            StopAll()
+            _G.Busy = false
+            isTweening = false
+            _G.State = "CHECK_QUEST"
+            print("🔄 AUTO FARM ON - FULL RESET")
+        else
+            StopAll()
+            print("⏹️ AUTO FARM OFF")
+        end
+        oldAutoFarm = _G.AutoFarm
     end
 end
 
@@ -372,29 +407,11 @@ end
 task.spawn(function()
     while true do
         task.wait(0.1)
-        if _G.AutoFarm then
-            pcall(RunStateMachine)
-        end
+        pcall(function()
+            RunStateMachine()
+            AutoFarmChanged()
+        end)
     end
-end)
-
--- ==================== UI STATUS ====================
-task.spawn(function()
-    while true do
-        task.wait(3)
-        if _G.AutoFarm then
-            print("📊 Lv:", Player.Data.Level.Value, "| State:", _G.State)
-        end
-    end
-end)
-
--- ==================== CHARACTER RESPAWN ====================
-Player.CharacterAdded:Connect(function()
-    task.wait(1)
-    UpdateHRP()
-    _G.State = "CHECK_QUEST"
-    isTweening = false
-    tweenLock = false
 end)
 
 -- ==================== UI ====================
@@ -404,7 +421,6 @@ farmGroup:AddButton({
     Title = "▶️ BẬT AUTO FARM",
     Callback = function()
         _G.AutoFarm = true
-        _G.State = "CHECK_QUEST"
         print("✅ Auto Farm đã BẬT")
     end
 })
@@ -413,9 +429,7 @@ farmGroup:AddButton({
     Title = "⏹️ TẮT AUTO FARM",
     Callback = function()
         _G.AutoFarm = false
-        _G.State = "IDLE"
-        StopTween()
-        ToggleNoclip(false)
+        StopAll()
         print("⏸️ Auto Farm đã TẮT")
     end
 })
@@ -457,8 +471,9 @@ settingGroup:AddSlider({
 
 UI.ToggleUI()
 print("=" .. string.rep("=", 50))
-print("✅ PREMIUM STATE MACHINE - ĐÃ FIX HOÀN CHỈNH!")
-print("📌 Tween Lock System: KHÔNG cho phép tween chồng chéo")
-print("📌 MOVING_TO_FARM: KHÔNG chạy logic khác khi đang bay")
+print("✅ HUB STANDARD - AUTO FARM ĐÃ SẴN SÀNG!")
+print("📌 IsQuestAccepted: Kiểm tra QuestTitle TEXT + Container VISIBLE")
+print("📌 Timeout 8s cho GET_QUEST, tránh treo vô hạn")
+print("📌 AutoFarm Toggle có FULL RESET state")
 print("📌 Bấm 'BẬT AUTO FARM' để bắt đầu")
 print("=" .. string.rep("=", 50)) 
