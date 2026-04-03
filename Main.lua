@@ -15,6 +15,8 @@ _G.AutoFarm = false
 _G.BringMob = false
 _G.TweenSpeed = 300
 _G.AttackDelay = 0.2
+_G.QuestMethod = "Remote"
+_G.Busy = false  -- Khóa vòng lặp khi đang nhận quest
 
 -- ==================== SERVICE ====================
 local Players = game:GetService("Players")
@@ -23,60 +25,23 @@ local VirtualInputManager = game:GetService("VirtualInputManager")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Player = Players.LocalPlayer
 
--- ==================== QUEST ID MAP (Ánh xạ NPC -> ID) ====================
+-- ==================== QUEST ID MAP (CẬP NHẬT) ====================
 local QuestID_Map = {
-    ["Bandit"] = 1,
+    -- Đảo Khỉ
     ["Monkey"] = 1,
-    ["Pirate"] = 1,
-    ["Brute"] = 1,
-    ["Viking"] = 1,
+    ["Gorilla"] = 2,
+    -- Đảo Tuyết
+    ["SnowBandit"] = 1,
+    ["Snowman"] = 2,
     ["SnowTrooper"] = 1,
-    ["ChiefPettyOfficer"] = 1,
-    ["SkyBandit"] = 1,
-    ["DarkMaster"] = 1,
-    ["Toga"] = 1,
-    ["Fishman"] = 1,
-    ["FishmanCommander"] = 1,
-    ["GalleyPirate"] = 1,
-    ["GalleyCaptain"] = 1,
-    ["Marine"] = 1,
-    ["MarineCaptain"] = 1,
-    ["Prisoner"] = 1,
-    ["DangerousPrisoner"] = 1,
-    ["MilitarySoldier"] = 1,
-    ["MilitarySpy"] = 1,
-    ["SaberExpert"] = 1,
-    ["GodHuman"] = 1,
-    ["CursedCaptain"] = 1,
-    ["IceAdmiral"] = 1,
-    ["MagmaNinja"] = 1,
-    ["Raider"] = 1,
-    ["Mercenary"] = 1,
-    ["SwanPirate"] = 1,
-    ["FactoryStaff"] = 1,
-    ["MarineLieutenant"] = 1,
-    ["Zombie"] = 1,
-    ["Vampire"] = 1,
-    ["Snowman"] = 1,
-    ["LabSubordinate"] = 1,
-    ["HornedMan"] = 1,
-    ["Diamond"] = 1,
-    ["PirateMilitia"] = 1,
-    ["Gunslinger"] = 1,
-    ["Crewmate"] = 1,
-    ["Bentham"] = 1,
-    ["DonSwan"] = 1,
-    ["Gladiator"] = 1,
-    ["Thug"] = 1,
-    ["Firefighter"] = 1,
-    ["Scientist"] = 1,
-    ["Ghost"] = 1,
-    ["Reaper"] = 1,
-    ["DragonCrew"] = 1,
+    -- Các NPC khác (mặc định thử 1-3)
 }
 
 function GetQuestID(npcName)
-    return QuestID_Map[npcName] or 1
+    local id = QuestID_Map[npcName]
+    if id then return id end
+    -- Nếu không có ID, mặc định thử từ 1 đến 3
+    return {1, 2, 3}
 end
 
 -- ==================== MỐC LEVEL 1-2600 ====================
@@ -154,24 +119,62 @@ function GetQuestByLevel(level)
     return QuestLevels[1]
 end
 
--- ==================== KIỂM TRA QUEST TRONG PlayerGui ====================
-function IsQuestAccepted()
+-- ==================== KIỂM TRA QUEST ====================
+local function IsQuestAccepted()
     pcall(function()
         local playerGui = Player:FindFirstChild("PlayerGui")
-        if playerGui then
-            local main = playerGui:FindFirstChild("Main")
-            if main then
-                local quest = main:FindFirstChild("Quest")
-                if quest and quest.Visible then
-                    return true
-                end
+        if playerGui and playerGui:FindFirstChild("Main") then
+            local quest = playerGui.Main:FindFirstChild("Quest")
+            if quest and quest.Visible then
+                return true
             end
         end
     end)
     return false
 end
 
--- ==================== LOGIC BAY (TWEEN) ====================
+-- ==================== NHẬN QUEST (THỬ ID 1-3) ====================
+local function AcceptQuest(questData)
+    if not questData then return false end
+    
+    local ids = GetQuestID(questData.npc)
+    if type(ids) == "number" then ids = {ids} end
+    
+    for _, questID in ipairs(ids) do
+        pcall(function()
+            if _G.QuestMethod == "Remote" then
+                local remote = ReplicatedStorage:FindFirstChild("Remotes")
+                if remote then
+                    local commF = remote:FindFirstChild("CommF_")
+                    if commF then
+                        local result = commF:InvokeServer("StartQuest", questData.npc, questID)
+                        if result == 0 then
+                            print("✅ NHẬN QUEST THÀNH CÔNG: " .. questData.npc .. " (ID=" .. questID .. ")")
+                            return true
+                        end
+                    end
+                end
+            else
+                local playerGui = Player:FindFirstChild("PlayerGui")
+                if playerGui and playerGui:FindFirstChild("Main") then
+                    local quest = playerGui.Main:FindFirstChild("Quest")
+                    if quest then
+                        local acceptBtn = quest:FindFirstChild("AcceptButton")
+                        if acceptBtn then
+                            acceptBtn:Fire()
+                            print("✅ NHẬN QUEST THÀNH CÔNG (Click): " .. questData.npc)
+                            return true
+                        end
+                    end
+                end
+            end
+        end)
+        task.wait(0.3)
+    end
+    return false
+end
+
+-- ==================== LOGIC BAY (BAY CAO HƠN 12 STUDS) ====================
 local currentTween = nil
 
 function StopTween()
@@ -182,28 +185,31 @@ function StopTween()
 end
 
 function TweenToPosition(Position)
-    if not _G.AutoFarm then return false end
+    if not _G.AutoFarm then return end
+    if _G.Busy then return end -- Không bay khi đang bận
+    
     StopTween()
     
-    local success = pcall(function()
+    pcall(function()
         local char = Player.Character
         if not char then return end
         local hrp = char:FindFirstChild("HumanoidRootPart")
         if not hrp then return end
         
-        local distance = (hrp.Position - Position).Magnitude
+        -- BAY CAO HƠN 12 STUDS ĐỂ TRÁNH KẸT
+        local adjustedPos = Vector3.new(Position.X, Position.Y + 12, Position.Z)
+        local distance = (hrp.Position - adjustedPos).Magnitude
         if distance < 10 then return end
         
         local tweenInfo = TweenInfo.new(
             math.clamp(distance / _G.TweenSpeed, 0.5, 10),
             Enum.EasingStyle.Linear
         )
-        currentTween = TweenService:Create(hrp, tweenInfo, {CFrame = CFrame.new(Position)})
+        currentTween = TweenService:Create(hrp, tweenInfo, {CFrame = CFrame.new(adjustedPos)})
         currentTween:Play()
         currentTween.Completed:Wait()
         currentTween = nil
     end)
-    return success
 end
 
 -- ==================== NOCLIP ====================
@@ -243,92 +249,24 @@ task.spawn(function()
     end
 end)
 
--- ==================== AUTO QUEST CHUẨN (DÙNG INVOKE + KIỂM TRA GUI) ====================
-function AcceptQuest(questData)
-    if not questData or not questData.npc then
-        warn("❌ [ACCEPT_QUEST] Không có dữ liệu NPC")
-        return false
-    end
-    
-    warn("🔍 [STEP 1] Đang tìm Remote CommF_...")
-    local remote = ReplicatedStorage:FindFirstChild("Remotes")
-    if not remote then
-        warn("❌ [STEP 1] Không tìm thấy Remotes folder!")
-        return false
-    end
-    
-    local commF = remote:FindFirstChild("CommF_")
-    if not commF then
-        warn("❌ [STEP 1] Không tìm thấy CommF_ remote!")
-        return false
-    end
-    warn("✅ [STEP 1] Tìm thấy Remote CommF_!")
-    
-    local questID = GetQuestID(questData.npc)
-    warn("🔍 [STEP 2] QuestID cho " .. questData.npc .. " = " .. questID)
-    
-    warn("🔍 [STEP 3] Gửi lệnh InvokeServer...")
-    local success, result = pcall(function()
-        return commF:InvokeServer("StartQuest", questData.npc, questID)
-    end)
-    
-    if not success then
-        warn("❌ [STEP 3] InvokeServer thất bại! Lỗi: " .. tostring(result))
-        return false
-    end
-    
-    warn("✅ [STEP 3] InvokeServer thành công! Kết quả trả về: " .. tostring(result))
-    
-    -- Xử lý kết quả trả về
-    if result == 0 then
-        warn("✅ [STEP 4] Server xác nhận thành công (result=0)")
-    elseif result == 1 then
-        warn("⚠️ [STEP 4] Server báo lỗi (result=1)")
-        return false
-    elseif result == 2 then
-        warn("⚠️ [STEP 4] Quest đã hoàn thành (result=2)")
-        return false
-    elseif type(result) == "number" and result > 0 then
-        warn("⚠️ [STEP 4] Cần level " .. result .. " để nhận quest này")
-        return false
-    else
-        warn("⚠️ [STEP 4] Kết quả không xác định: " .. tostring(result))
-    end
-    
-    warn("🔍 [STEP 5] Kiểm tra PlayerGui xem quest đã hiển thị chưa...")
-    local maxWait = 6
-    for i = 1, maxWait do
-        task.wait(1)
-        if IsQuestAccepted() then
-            warn("✅ [STEP 5] Đã thấy Quest GUI! Nhận quest thành công!")
-            return true
-        end
-        warn("⏳ [STEP 5] Chờ quest hiển thị... (" .. i .. "/" .. maxWait .. ")")
-    end
-    
-    warn("❌ [STEP 5] Hết thời gian chờ, Quest GUI không hiển thị!")
-    return false
-end
-
 -- ==================== BRING MOB ====================
 task.spawn(function()
     while true do
         task.wait(0.15)
-        if _G.AutoFarm and _G.BringMob then
+        if _G.AutoFarm and _G.BringMob and not _G.Busy then
             pcall(function()
                 local char = Player.Character
                 if not char then return end
                 local hrp = char:FindFirstChild("HumanoidRootPart")
                 if not hrp then return end
                 
-                local myPos = hrp.Position
-                local targetPos = myPos + (hrp.CFrame.LookVector * 12) + Vector3.new(0, 3, 0)
+                local targetPos = hrp.Position + (hrp.CFrame.LookVector * 12) + Vector3.new(0, 3, 0)
                 
                 for _, v in pairs(workspace:GetChildren()) do
                     if v:FindFirstChild("Humanoid") and v:FindFirstChild("HumanoidRootPart") then
                         local enemyHrp = v.HumanoidRootPart
                         local enemyHum = v.Humanoid
-                        local dist = (enemyHrp.Position - myPos).Magnitude
+                        local dist = (enemyHrp.Position - hrp.Position).Magnitude
                         
                         if enemyHum.Health > 0 and dist <= 20 and dist > 8 then
                             enemyHrp.CFrame = CFrame.new(targetPos)
@@ -341,11 +279,11 @@ task.spawn(function()
     end
 end)
 
--- ==================== AUTO ATTACK (M1) ====================
+-- ==================== AUTO ATTACK ====================
 task.spawn(function()
     while true do
         task.wait(_G.AttackDelay)
-        if _G.AutoFarm then
+        if _G.AutoFarm and not _G.Busy then
             pcall(function()
                 VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, 0)
                 task.wait(0.05)
@@ -355,50 +293,35 @@ task.spawn(function()
     end
 end)
 
--- ==================== MAIN LOOP FARM ====================
+-- ==================== MAIN LOOP FARM (SỬA LỖI TWEEN LOOP) ====================
 task.spawn(function()
     while true do
         task.wait(0.5)
-        if _G.AutoFarm then
+        if _G.AutoFarm and not _G.Busy then
             pcall(function()
-                if not Player.Character or not Player.Character:FindFirstChild("HumanoidRootPart") then
-                    task.wait(2)
-                    return
-                end
-                
                 local playerLevel = Player.Data.Level.Value
                 local questData = GetQuestByLevel(playerLevel)
                 
-                if not questData then 
-                    warn("⚠️ Không tìm thấy quest cho level " .. playerLevel)
-                    return 
-                end
-                
-                -- KIỂM TRA NẾU CHƯA CÓ QUEST THÌ NHẬN
                 if not IsQuestAccepted() then
-                    warn("🔍 Chưa có quest, di chuyển đến NPC: " .. questData.npc)
-                    TweenToPosition(questData.location)
-                    task.wait(1)
+                    _G.Busy = true -- Khóa vòng lặp
+                    warn("🚀 Đang đi nhận nhiệm vụ...")
                     
-                    warn("📜 Đang nhận quest từ " .. questData.npc)
+                    TweenToPosition(questData.location)
+                    task.wait(0.5)
+                    
                     local success = AcceptQuest(questData)
                     
                     if success then
-                        warn("✅ Đã nhận quest thành công, di chuyển đến khu vực farm")
+                        warn("✅ Xong! Chờ 1.5s để Server cập nhật...")
+                        task.wait(1.5) -- Đợi Server cập nhật Quest
+                        warn("✅ Bay đi farm thôi!")
                         TweenToPosition(questData.mobArea)
-                        task.wait(0.5)
-                    else
-                        warn("⚠️ Nhận quest thất bại, thử lại sau 2 giây")
-                        task.wait(2)
                     end
-                else
-                    -- ĐÃ CÓ QUEST, FARM BÌNH THƯỜNG
-                    TweenToPosition(questData.mobArea)
-                    task.wait(0.5)
                     
-                    if math.random(1, 30) == 1 then
-                        warn("🔥 Đang farm | Level: " .. playerLevel .. " | Quái: " .. questData.npc)
-                    end
+                    _G.Busy = false -- Mở khóa
+                else
+                    -- Nếu đã có Quest thì cứ thế mà bay ra bãi farm
+                    TweenToPosition(questData.mobArea)
                 end
             end)
         end
@@ -412,8 +335,8 @@ farmGroup:AddButton({
     Title = "▶️ BẬT AUTO FARM",
     Callback = function()
         _G.AutoFarm = true
-        warn("✅ Auto Farm đã BẬT")
-        warn("📌 Script sẽ tự động: Nhận quest -> Di chuyển -> Đánh quái")
+        _G.Busy = false
+        print("✅ Auto Farm đã BẬT")
     end
 })
 
@@ -421,8 +344,9 @@ farmGroup:AddButton({
     Title = "⏹️ TẮT AUTO FARM",
     Callback = function()
         _G.AutoFarm = false
+        _G.Busy = false
         StopTween()
-        warn("⏸️ Auto Farm đã TẮT")
+        print("⏸️ Auto Farm đã TẮT")
     end
 })
 
@@ -430,7 +354,7 @@ farmGroup:AddButton({
     Title = "📦 BẬT GOM QUÁI",
     Callback = function()
         _G.BringMob = true
-        warn("✅ Bring Mob BẬT")
+        print("✅ Bring Mob BẬT")
     end
 })
 
@@ -438,21 +362,7 @@ farmGroup:AddButton({
     Title = "📦 TẮT GOM QUÁI",
     Callback = function()
         _G.BringMob = false
-        warn("⏸️ Bring Mob TẮT")
-    end
-})
-
-farmGroup:AddButton({
-    Title = "📍 TEST NHẬN QUEST",
-    Callback = function()
-        local level = Player.Data.Level.Value
-        local quest = GetQuestByLevel(level)
-        if quest then
-            warn("🧪 Test nhận quest từ: " .. quest.npc)
-            TweenToPosition(quest.location)
-            task.wait(1)
-            AcceptQuest(quest)
-        end
+        print("⏸️ Bring Mob TẮT")
     end
 })
 
@@ -476,11 +386,19 @@ settingGroup:AddSlider({
     Callback = function(v) _G.AttackDelay = v end
 })
 
+settingGroup:AddDropdown({
+    Title = "📜 Phương thức nhận quest",
+    Values = {"Remote", "Click"},
+    Default = "Remote",
+    Callback = function(v) _G.QuestMethod = v end
+})
+
 -- ==================== HIỂN THỊ UI ====================
 UI.ToggleUI()
-warn("=" .. string.rep("=", 50))
-warn("✅ Apple Hub Premium - AUTO QUEST ĐÃ ĐƯỢC SỬA!")
-warn("📌 Các bước debug được log đầy đủ bằng warn()")
-warn("📌 Xem console (F9) để biết script đang kẹt ở đâu")
-warn("📌 Hướng dẫn: Bấm 'BẬT AUTO FARM' để bắt đầu")
-warn("=" .. string.rep("=", 50)) 
+print("=" .. string.rep("=", 40))
+print("✅ Apple Hub Premium - ĐÃ SỬA LỖI TWEEN LOOP!")
+print("📌 Thêm biến _G.Busy để khóa vòng lặp khi nhận quest")
+print("📌 Bay cao hơn 12 studs để tránh kẹt")
+print("📌 Đợi 1.5s sau khi nhận quest để Server cập nhật")
+print("📌 QuestID_Map: Monkey=1, Gorilla=2, SnowBandit=1, Snowman=2")
+print("=" .. string.rep("=", 40))
