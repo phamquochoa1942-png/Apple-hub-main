@@ -13,8 +13,8 @@ local settingTab = window:AddTab("⚙️ Settings")
 -- ==================== BIẾN CẤU HÌNH ====================
 _G.AutoFarm = false
 _G.BringMob = false
-_G.TweenSpeed = 350
-_G.AttackDelay = 0.08  -- CỰC NHANH (tối đa cho phép)
+_G.TweenSpeed = 380
+_G.AttackDelay = 0.07
 _G.State = "CHECK_QUEST"
 _G.CurrentQuest = nil
 _G.Busy = false
@@ -32,6 +32,7 @@ local playerGui = Player:WaitForChild("PlayerGui")
 -- ==================== GLOBAL CHARACTER & HRP ====================
 local Character, HRP
 local humanoid = nil
+local bodyVelocity = nil
 
 function UpdateHRP()
     Character = Player.Character or Player.CharacterAdded:Wait()
@@ -67,10 +68,10 @@ function ToggleNoclip(enable)
     end
 end
 
--- ==================== TWEEN CONTROL (FIX BAY) ====================
+-- ==================== TWEEN CONTROL (FIX BAY TRÊN ĐẦU QUÁI) ====================
 local currentTween = nil
 local isTweening = false
-local DISTANCE_THRESHOLD = 15
+local DISTANCE_THRESHOLD = 12
 
 function StopTween()
     if currentTween then
@@ -83,7 +84,7 @@ function StopTween()
     isTweening = false
 end
 
-function TweenToPosition(targetPos, useHeight)
+function TweenToPosition(targetPos, flyHeight)
     pcall(function()
         if _G.Busy then return end
         if isTweening then return end
@@ -91,10 +92,9 @@ function TweenToPosition(targetPos, useHeight)
         local char = Player.Character
         if not char or not HRP then return end
         
-        local target = targetPos
-        if useHeight == nil or useHeight == true then
-            target = Vector3.new(targetPos.X, targetPos.Y + 7, targetPos.Z)
-        end
+        -- Bay trên cao 8-10 studs so với mặt đất
+        local height = flyHeight or 9
+        local target = Vector3.new(targetPos.X, targetPos.Y + height, targetPos.Z)
         
         local distance = (HRP.Position - target).Magnitude
         if distance < DISTANCE_THRESHOLD then return end
@@ -103,26 +103,36 @@ function TweenToPosition(targetPos, useHeight)
         StopTween()
         
         isTweening = true
-        local tweenTime = math.max(0.8, distance / _G.TweenSpeed)
+        local tweenTime = math.max(0.6, distance / _G.TweenSpeed)
         local tweenInfo = TweenInfo.new(tweenTime, Enum.EasingStyle.Linear)
         
         currentTween = TweenService:Create(HRP, tweenInfo, {CFrame = CFrame.new(target)})
         currentTween:Play()
         
+        -- GIỮ NHÂN VẬT TRÊN KHÔNG BẰNG BODYVELOCITY
+        if bodyVelocity then bodyVelocity:Destroy() end
+        bodyVelocity = Instance.new("BodyVelocity")
+        bodyVelocity.MaxForce = Vector3.new(4000, 4000, 4000)
+        bodyVelocity.Velocity = Vector3.new(0, 0, 0)
+        bodyVelocity.Parent = HRP
+        
         currentTween.Completed:Connect(function()
             isTweening = false
+            if bodyVelocity then bodyVelocity:Destroy() end
             ToggleNoclip(false)
         end)
         
         currentTween.Canceled:Connect(function()
             isTweening = false
+            if bodyVelocity then bodyVelocity:Destroy() end
             ToggleNoclip(false)
         end)
         
         task.spawn(function()
-            task.wait(tweenTime + 1.5)
+            task.wait(tweenTime + 1)
             if isTweening then
                 isTweening = false
+                if bodyVelocity then bodyVelocity:Destroy() end
                 ToggleNoclip(false)
             end
         end)
@@ -135,22 +145,23 @@ function StopAll()
         currentTween:Destroy()
         currentTween = nil
     end
+    if bodyVelocity then bodyVelocity:Destroy() end
     isTweening = false
     _G.Busy = false
     ToggleNoclip(false)
 end
 
--- ==================== ANTI-FALL (MẠNH HƠN) ====================
+-- ==================== GIỮ NHÂN VẬT TRÊN CAO KHI ĐÁNH ====================
 task.spawn(function()
     while true do
-        task.wait(0.1)
-        if _G.AutoFarm and HRP then
+        task.wait(0.15)
+        if _G.AutoFarm and _G.State == "FARMING" and not isTweening then
             pcall(function()
-                if HRP.Velocity.Y < -30 then
-                    HRP.Velocity = Vector3.new(HRP.Velocity.X, 0, HRP.Velocity.Z)
+                if HRP and bodyVelocity then
+                    bodyVelocity.Velocity = Vector3.new(0, 0, 0)
                 end
-                if humanoid and humanoid.FloorMaterial ~= Enum.Material.Air then
-                    HRP.Velocity = Vector3.new(HRP.Velocity.X, math.max(HRP.Velocity.Y, 0), HRP.Velocity.Z)
+                if HRP and HRP.Velocity.Y < -5 then
+                    HRP.Velocity = Vector3.new(HRP.Velocity.X, 0, HRP.Velocity.Z)
                 end
             end)
         end
@@ -159,30 +170,19 @@ end)
 
 -- ==================== AUTO ATTACK (CỰC NHANH) ====================
 local lastAttack = 0
-local attackCounter = 0
 
 function DoAttack()
     local now = tick()
     if now - lastAttack >= _G.AttackDelay then
         lastAttack = now
-        attackCounter = attackCounter + 1
         
         pcall(function()
-            -- VirtualInputManager
             VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, 0)
             task.wait(0.01)
             VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, game, 0)
             
-            -- ContextActionService dự phòng
             pcall(function()
                 game:GetService("ContextActionService"):PressButton("Attack")
-            end)
-            
-            -- KeyCode dự phòng
-            pcall(function()
-                local VirtualUser = game:GetService("VirtualUser")
-                VirtualUser:CaptureController()
-                VirtualUser:ClickButton1(Vector2.new(0, 0))
             end)
         end)
     end
@@ -197,21 +197,18 @@ task.spawn(function()
     end
 end)
 
--- ==================== BRING MOB (NÂNG CẤP - KÉO NHIỀU QUÁI) ====================
-local broughtMobs = {}
-
+-- ==================== BRING MOB (NÂNG CẤP) ====================
 function BringMobs()
     if not _G.AutoFarm or not _G.BringMob then return end
     if isTweening then return end
-    if tick() - _G.LastBringTime < 0.5 then return end
+    if tick() - _G.LastBringTime < 0.4 then return end
     _G.LastBringTime = tick()
     
     pcall(function()
         if not HRP then return end
         
-        local gatherPoint = HRP.Position + (HRP.CFrame.LookVector * 14) + Vector3.new(0, 2, 0)
+        local gatherPoint = HRP.Position + (HRP.CFrame.LookVector * 13) + Vector3.new(0, 2, 0)
         local enemies = workspace:FindFirstChild("Enemies")
-        local broughtCount = 0
         
         if enemies then
             for _, v in pairs(enemies:GetChildren()) do
@@ -220,17 +217,12 @@ function BringMobs()
                     local enemyHum = v.Humanoid
                     local dist = (enemyHrp.Position - HRP.Position).Magnitude
                     
-                    if enemyHum.Health > 0 and dist <= 35 and dist > 10 then
+                    if enemyHum.Health > 0 and dist <= 40 and dist > 10 then
                         enemyHrp.CFrame = CFrame.new(gatherPoint)
                         enemyHrp.Velocity = Vector3.new(0, 0, 0)
-                        broughtCount = broughtCount + 1
                     end
                 end
             end
-        end
-        
-        if broughtCount > 0 then
-            print("📦 Đã gom " .. broughtCount .. " quái")
         end
     end)
 end
@@ -356,7 +348,7 @@ function GetNearestMob(mobName)
     return closest
 end
 
--- ==================== STATE MACHINE ====================
+-- ==================== STATE MACHINE (TỐI ƯU NHANH) ====================
 function RunStateMachine()
     if not _G.AutoFarm or _G.Busy then return end
     
@@ -382,57 +374,46 @@ function RunStateMachine()
         end
         
     elseif _G.State == "GET_QUEST" then
-        local startTime = tick()
-        print("✈️ Đang bay đến NPC để nhận nhiệm vụ...")
+        print("✈️ Bay đến NPC nhận quest:", _G.CurrentQuest.QuestName)
         
-        TweenToPosition(_G.CurrentQuest.NPCPos, true)
-        task.wait(1)
+        -- Bay đến NPC (cao 10 studs)
+        TweenToPosition(_G.CurrentQuest.NPCPos, 10)
+        task.wait(0.8)
         
-        local distToNPC = (HRP.Position - _G.CurrentQuest.NPCPos).Magnitude
-        if distToNPC < 30 then
-            pcall(function()
-                for i = 1, 3 do
-                    if not IsQuestAccepted() then
-                        game:GetService("ReplicatedStorage").Remotes.CommF_:InvokeServer("StartQuest", _G.CurrentQuest.QuestName, i)
-                        print("📡 Đã gửi yêu cầu quest ID:", i)
-                        task.wait(0.5)
-                    end
+        -- Nhận quest ngay lập tức, không chờ
+        pcall(function()
+            for i = 1, 2 do
+                if not IsQuestAccepted() then
+                    game:GetService("ReplicatedStorage").Remotes.CommF_:InvokeServer("StartQuest", _G.CurrentQuest.QuestName, i)
+                    task.wait(0.3)
                 end
-            end)
-        end
-        
-        local waitCount = 0
-        while waitCount < 20 do
-            task.wait(0.5)
-            if IsQuestAccepted() then
-                print("✅ Đã nhận xong! Chuyển sang bay đi farm.")
-                task.wait(0.5)
-                _G.State = "MOVING_TO_FARM"
-                return
             end
-            waitCount = waitCount + 1
-        end
+        end)
         
-        if tick() - startTime > 12 then
-            print("⏰ Đợi lâu quá không nhận được, reset lại...")
+        task.wait(0.5)
+        
+        -- Chuyển state ngay, không chờ lâu
+        if IsQuestAccepted() then
+            print("✅ NHẬN QUEST XONG! BAY FARM NGAY")
+            _G.State = "MOVING_TO_FARM"
+        else
+            print("⚠️ Chưa thấy quest UI, thử lại...")
             _G.State = "CHECK_QUEST"
         end
         
     elseif _G.State == "MOVING_TO_FARM" then
-        print("🌾 MOVING TO FARM")
+        print("🌾 Bay đến khu farm")
         local mobArea = _G.CurrentQuest.MobArea or (_G.CurrentQuest.NPCPos + Vector3.new(150, 50, 150))
         
-        TweenToPosition(mobArea, true)
+        TweenToPosition(mobArea, 8)
+        task.wait(0.5)
         
-        local distance = (HRP.Position - mobArea).Magnitude
-        if distance < DISTANCE_THRESHOLD then
-            print("✅ ĐẾN BÃI FARM -> FARMING")
-            _G.State = "FARMING"
-        end
+        _G.State = "FARMING"
+        print("✅ BẮT ĐẦU FARMING!")
         
     elseif _G.State == "FARMING" then
         if not IsQuestAccepted() then
-            print("✅ QUEST DONE -> CHECK_QUEST")
+            print("✅ QUEST DONE -> NHẬN QUEST MỚI")
             _G.State = "CHECK_QUEST"
             return
         end
@@ -442,8 +423,9 @@ function RunStateMachine()
             local mobPos = mob.HumanoidRootPart.Position
             local distanceToMob = (HRP.Position - mobPos).Magnitude
             
-            if distanceToMob > 10 then
-                TweenToPosition(mobPos, true)
+            -- Bay trên đầu quái (cao 9 studs)
+            if distanceToMob > 9 then
+                TweenToPosition(mobPos, 9)
             end
         end
     end
@@ -471,7 +453,7 @@ end
 -- ==================== MAIN LOOP ====================
 task.spawn(function()
     while true do
-        task.wait(0.1)
+        task.wait(0.15)
         pcall(function()
             RunStateMachine()
             AutoFarmChanged()
@@ -500,10 +482,10 @@ farmGroup:AddButton({
 })
 
 farmGroup:AddButton({
-    Title = "📦 BẬT GOM QUÁI (NÂNG CẤP)",
+    Title = "📦 BẬT GOM QUÁI",
     Callback = function()
         _G.BringMob = true
-        print("✅ Bring Mob BẬT - Kéo nhiều quái cùng lúc")
+        print("✅ Bring Mob BẬT")
     end
 })
 
@@ -519,17 +501,17 @@ local settingGroup = settingTab:AddLeftGroupbox("⚙️ Cài Đặt")
 
 settingGroup:AddSlider({
     Title = "🚀 Tốc độ bay",
-    Min = 200,
+    Min = 250,
     Max = 500,
-    Default = 350,
+    Default = 380,
     Callback = function(v) _G.TweenSpeed = v end
 })
 
 settingGroup:AddSlider({
-    Title = "⚔️ Delay đánh (0.08 cực nhanh)",
+    Title = "⚔️ Delay đánh (0.07 cực nhanh)",
     Min = 0.05,
     Max = 0.3,
-    Default = 0.08,
+    Default = 0.07,
     Decimal = true,
     Callback = function(v) _G.AttackDelay = v end
 })
@@ -537,8 +519,8 @@ settingGroup:AddSlider({
 UI.ToggleUI()
 print("=" .. string.rep("=", 50))
 print("✅ AUTO FARM NÂNG CẤP CAO CẤP!")
-print("📌 Tốc độ đánh: 0.08s/đòn (cực nhanh)")
-print("📌 Gom quái: Kéo nhiều con cùng lúc, bán kính 35 studs")
-print("📌 Bay: Ổn định, không đáp xuống, bay trên đầu quái 7 studs")
+print("📌 Bay trên đầu quái 9 studs - KHÔNG ĐÁP XUỐNG")
+print("📌 Nhận quest siêu nhanh - không chờ lâu")
+print("📌 Tốc độ đánh: 0.07s/đòn")
 print("📌 Bấm 'BẬT AUTO FARM' để bắt đầu")
 print("=" .. string.rep("=", 50)) 
