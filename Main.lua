@@ -19,8 +19,7 @@ _G.State = "CHECK_QUEST"
 _G.CurrentQuest = nil
 _G.Busy = false
 _G.LastBringTime = 0
-_G.FlyHeight = 9       -- Độ cao bay cố định (9 studs - vừa đánh trúng)
-_G.AttackRange = 18    -- Tầm đánh xa (studs)
+_G.FlyHeight = 9
 
 -- ==================== SERVICE ====================
 local Players = game:GetService("Players")
@@ -70,7 +69,7 @@ function ToggleNoclip(enable)
     end
 end
 
--- ==================== TWEEN CONTROL + GIỮ CAO ====================
+-- ==================== TWEEN CONTROL ====================
 local currentTween = nil
 local isTweening = false
 local DISTANCE_THRESHOLD = 10
@@ -109,7 +108,6 @@ function TweenToPosition(targetPos)
         local char = Player.Character
         if not char or not HRP then return end
         
-        -- BAY CỐ ĐỊNH Ở ĐỘ CAO 9 STUDS
         local target = Vector3.new(targetPos.X, targetPos.Y + _G.FlyHeight, targetPos.Z)
         local distance = (HRP.Position - target).Magnitude
         if distance < DISTANCE_THRESHOLD then 
@@ -153,18 +151,16 @@ function StopAll()
     ToggleNoclip(false)
 end
 
--- ==================== GIỮ NHÂN VẬT TRÊN CAO LIÊN TỤC ====================
+-- ==================== GIỮ NHÂN VẬT TRÊN CAO ====================
 task.spawn(function()
     while true do
         task.wait(0.1)
         if _G.AutoFarm and _G.State == "FARMING" then
             pcall(function()
                 if HRP then
-                    -- Giữ độ cao
                     if HRP.Velocity.Y < -3 then
                         HRP.Velocity = Vector3.new(HRP.Velocity.X, 0, HRP.Velocity.Z)
                     end
-                    -- Đảm bảo hover
                     if not bodyVelocity then
                         StartHover()
                     end
@@ -176,7 +172,7 @@ task.spawn(function()
     end
 end)
 
--- ==================== AUTO ATTACK (TẦM XA) ====================
+-- ==================== AUTO ATTACK ====================
 local lastAttack = 0
 
 function DoAttack()
@@ -185,17 +181,14 @@ function DoAttack()
         lastAttack = now
         
         pcall(function()
-            -- Click chuột trái
             VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, 0)
             task.wait(0.01)
             VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, game, 0)
             
-            -- ContextActionService
             pcall(function()
                 game:GetService("ContextActionService"):PressButton("Attack")
             end)
             
-            -- VirtualUser
             pcall(function()
                 local vu = game:GetService("VirtualUser")
                 vu:CaptureController()
@@ -214,29 +207,34 @@ task.spawn(function()
     end
 end)
 
--- ==================== BRING MOB (GOM MỖI LẦN 2-3 CON) ====================
-local broughtQueue = {}
-
+-- ==================== BRING MOB (FIX - KÉO QUÁI XUỐNG ĐẤT) ====================
 function BringMobs()
     if not _G.AutoFarm or not _G.BringMob then return end
     if isTweening then return end
-    if tick() - _G.LastBringTime < 0.5 then return end
+    if tick() - _G.LastBringTime < 0.4 then return end
     _G.LastBringTime = tick()
     
     pcall(function()
         if not HRP then return end
         
-        local gatherPoint = HRP.Position + (HRP.CFrame.LookVector * 13) + Vector3.new(0, 2, 0)
+        -- QUAN TRỌNG: Điểm gom quái ở DƯỚI ĐẤT (cách mặt đất 2 studs)
+        -- Lấy vị trí mặt đất dưới chân bạn
+        local ray = Ray.new(HRP.Position, Vector3.new(0, -20, 0))
+        local hit, groundPos = workspace:FindPartOnRay(ray, Character)
+        local groundY = groundPos and groundPos.Y or (HRP.Position.Y - 5)
+        
+        -- Điểm gom quái: trước mặt, SÁT MẶT ĐẤT (groundY + 2)
+        local gatherPoint = HRP.Position + (HRP.CFrame.LookVector * 14)
+        gatherPoint = Vector3.new(gatherPoint.X, groundY + 2, gatherPoint.Z)
+        
         local enemies = workspace:FindFirstChild("Enemies")
         local availableMobs = {}
         
         if enemies then
-            -- Lọc quái còn sống và trong tầm
             for _, v in pairs(enemies:GetChildren()) do
                 if v:FindFirstChild("Humanoid") and v:FindFirstChild("HumanoidRootPart") then
-                    local enemyHrp = v.HumanoidRootPart
                     local enemyHum = v.Humanoid
-                    local dist = (enemyHrp.Position - HRP.Position).Magnitude
+                    local dist = (v.HumanoidRootPart.Position - HRP.Position).Magnitude
                     
                     if enemyHum.Health > 0 and dist <= 45 and dist > 8 then
                         table.insert(availableMobs, v)
@@ -244,13 +242,26 @@ function BringMobs()
                 end
             end
             
-            -- CHỈ GOM 2-3 CON MỖI LẦN (tránh quá tải)
+            -- Gom 2-3 con mỗi lần
             local bringCount = math.min(#availableMobs, 3)
             for i = 1, bringCount do
                 local mob = availableMobs[i]
                 local enemyHrp = mob.HumanoidRootPart
-                enemyHrp.CFrame = CFrame.new(gatherPoint)
+                
+                -- KÉO QUÁI XUỐNG ĐẤT (Y = groundY + 2)
+                local mobTarget = Vector3.new(gatherPoint.X, groundY + 2, gatherPoint.Z)
+                enemyHrp.CFrame = CFrame.new(mobTarget)
                 enemyHrp.Velocity = Vector3.new(0, 0, 0)
+                
+                -- Giữ quái ở dưới đất bằng BodyVelocity
+                local mobVel = Instance.new("BodyVelocity")
+                mobVel.MaxForce = Vector3.new(4000, 4000, 4000)
+                mobVel.Velocity = Vector3.new(0, 0, 0)
+                mobVel.Parent = enemyHrp
+                task.spawn(function()
+                    task.wait(2)
+                    mobVel:Destroy()
+                end)
                 
                 -- Tắt AI quái
                 pcall(function()
@@ -261,7 +272,7 @@ function BringMobs()
             end
             
             if bringCount > 0 then
-                print("📦 Đã gom " .. bringCount .. "/" .. #availableMobs .. " quái")
+                print("📦 Đã gom " .. bringCount .. " quái xuống đất")
             end
         end
     end)
@@ -269,7 +280,7 @@ end
 
 task.spawn(function()
     while true do
-        task.wait(0.25)
+        task.wait(0.3)
         if _G.AutoFarm and _G.BringMob and _G.State == "FARMING" and not isTweening then
             BringMobs()
         end
@@ -443,8 +454,6 @@ function RunStateMachine()
         if mob then
             local mobPos = mob.HumanoidRootPart.Position
             local distanceToMob = (HRP.Position - mobPos).Magnitude
-            
-            -- BAY CÁCH XA NHƯNG VẪN ĐÁNH TRÚNG NHỜ TẦM XA
             if distanceToMob > 12 then
                 TweenToPosition(mobPos)
             end
@@ -502,10 +511,10 @@ farmGroup:AddButton({
 })
 
 farmGroup:AddButton({
-    Title = "📦 BẬT GOM QUÁI (2-3 con/lần)",
+    Title = "📦 BẬT GOM QUÁI (DƯỚI ĐẤT)",
     Callback = function()
         _G.BringMob = true
-        print("✅ Bring Mob BẬT - Mỗi lần gom 2-3 con")
+        print("✅ Bring Mob BẬT - Kéo quái xuống đất")
     end
 })
 
@@ -537,7 +546,7 @@ settingGroup:AddSlider({
 })
 
 settingGroup:AddSlider({
-    Title = "🗻 Độ cao bay cố định",
+    Title = "🗻 Độ cao bay",
     Min = 6,
     Max = 15,
     Default = 9,
@@ -546,9 +555,8 @@ settingGroup:AddSlider({
 
 UI.ToggleUI()
 print("=" .. string.rep("=", 50))
-print("✅ AUTO FARM CAO CẤP - FIX HOÀN CHỈNH!")
-print("📌 Bay cố định trên đầu quái (9 studs) - KHÔNG HẠ CÁNH")
-print("📌 Gom quái: Mỗi lần 2-3 con, gom đều đặn")
-print("📌 Tầm đánh xa - đánh trúng từ xa")
+print("✅ AUTO FARM - FIX GOM QUÁI XUỐNG ĐẤT!")
+print("📌 Quái được kéo SÁT MẶT ĐẤT (Y + 2) - không bay lên theo bạn")
+print("📌 Mỗi lần gom 2-3 con, có BodyVelocity giữ quái dưới đất")
 print("📌 Bấm 'BẬT AUTO FARM' để bắt đầu")
 print("=" .. string.rep("=", 50)) 
