@@ -15,8 +15,7 @@ _G.AutoFarm = false
 _G.BringMob = false
 _G.TweenSpeed = 300
 _G.AttackDelay = 0.2
-_G.QuestMethod = "Remote"
-_G.Busy = false
+_G.Busy = false  -- Biến quan trọng nhất để chống lỗi giật
 
 -- ==================== SERVICE ====================
 local Players = game:GetService("Players")
@@ -25,7 +24,7 @@ local VirtualInputManager = game:GetService("VirtualInputManager")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Player = Players.LocalPlayer
 
--- ==================== LOGIC BAY (TỪ CODE CŨ CỦA BẠN) ====================
+-- ==================== LOGIC BAY (GIỮ NGUYÊN TỪ CODE CŨ) ====================
 local currentTween = nil
 
 function StopTween()
@@ -63,70 +62,70 @@ end
 
 -- ==================== MỐC LEVEL 1-2600 ====================
 local QuestLevels = {
-    {min = 1, max = 10, npc = "Bandit", location = Vector3.new(1120, 13, 1450), mobArea = Vector3.new(1100, 13, 1480)},
-    {min = 11, max = 20, npc = "Monkey", location = Vector3.new(-1177, 68, 292), mobArea = Vector3.new(-1200, 68, 320)},
-    {min = 21, max = 30, npc = "Pirate", location = Vector3.new(2677, 28, 180), mobArea = Vector3.new(2650, 28, 200)},
-    {min = 31, max = 40, npc = "Brute", location = Vector3.new(2865, 29, 482), mobArea = Vector3.new(2840, 29, 510)},
-    {min = 41, max = 50, npc = "Viking", location = Vector3.new(249, 51, 435), mobArea = Vector3.new(220, 51, 460)},
-    {min = 51, max = 70, npc = "SnowTrooper", location = Vector3.new(873, 114, -1269), mobArea = Vector3.new(850, 114, -1290)},
-    {min = 71, max = 85, npc = "ChiefPettyOfficer", location = Vector3.new(-438, 18, 618), mobArea = Vector3.new(-460, 18, 640)},
-    {min = 86, max = 100, npc = "SkyBandit", location = Vector3.new(-4838, 721, -2660), mobArea = Vector3.new(-4860, 721, -2680)},
-    {min = 101, max = 120, npc = "DarkMaster", location = Vector3.new(-5174, 593, -2759), mobArea = Vector3.new(-5200, 593, -2780)},
-    {min = 121, max = 140, npc = "Toga", location = Vector3.new(-5236, 817, -3103), mobArea = Vector3.new(-5260, 817, -3120)},
-    {min = 141, max = 160, npc = "Fishman", location = Vector3.new(3928, 10, -1032), mobArea = Vector3.new(3900, 10, -1050)},
-    {min = 161, max = 180, npc = "FishmanCommander", location = Vector3.new(3904, 12, -1408), mobArea = Vector3.new(3880, 12, -1430)},
-    {min = 181, max = 210, npc = "GalleyPirate", location = Vector3.new(5598, 13, 700), mobArea = Vector3.new(5570, 13, 720)},
-    {min = 211, max = 240, npc = "GalleyCaptain", location = Vector3.new(5697, 14, 686), mobArea = Vector3.new(5670, 14, 710)},
-    {min = 241, max = 270, npc = "Marine", location = Vector3.new(-2937, 12, -2857), mobArea = Vector3.new(-2960, 12, -2880)},
-    {min = 271, max = 300, npc = "MarineCaptain", location = Vector3.new(-2936, 13, -2998), mobArea = Vector3.new(-2960, 13, -3020)},
-    {min = 301, max = 330, npc = "Prisoner", location = Vector3.new(5308, 18, 42), mobArea = Vector3.new(5280, 18, 60)},
-    {min = 331, max = 360, npc = "DangerousPrisoner", location = Vector3.new(5310, 16, 137), mobArea = Vector3.new(5280, 16, 160)},
-    {min = 361, max = 400, npc = "MilitarySoldier", location = Vector3.new(-2381, 23, -2352), mobArea = Vector3.new(-2400, 23, -2370)},
-    {min = 401, max = 450, npc = "MilitarySpy", location = Vector3.new(-2581, 24, -2485), mobArea = Vector3.new(-2600, 24, -2500)},
-    {min = 451, max = 500, npc = "SaberExpert", location = Vector3.new(1432, 11, 26), mobArea = Vector3.new(1410, 11, 50)},
-    {min = 501, max = 550, npc = "GodHuman", location = Vector3.new(-4652, 822, -3030), mobArea = Vector3.new(-4670, 822, -3050)},
-    {min = 551, max = 600, npc = "CursedCaptain", location = Vector3.new(3637, 17, -354), mobArea = Vector3.new(3610, 17, -370)},
-    {min = 601, max = 650, npc = "IceAdmiral", location = Vector3.new(1562, 13, 433), mobArea = Vector3.new(1540, 13, 450)},
-    {min = 651, max = 700, npc = "MagmaNinja", location = Vector3.new(-5718, 9, 273), mobArea = Vector3.new(-5740, 9, 290)},
-    {min = 701, max = 725, npc = "Raider", location = Vector3.new(771, 31, 1351), mobArea = Vector3.new(750, 31, 1370)},
-    {min = 726, max = 750, npc = "Mercenary", location = Vector3.new(786, 32, 1172), mobArea = Vector3.new(760, 32, 1190)},
-    {min = 751, max = 775, npc = "SwanPirate", location = Vector3.new(527, 18, 1406), mobArea = Vector3.new(500, 18, 1420)},
-    {min = 776, max = 800, npc = "FactoryStaff", location = Vector3.new(435, 209, -376), mobArea = Vector3.new(410, 209, -390)},
-    {min = 801, max = 850, npc = "MarineLieutenant", location = Vector3.new(-2804, 72, -3342), mobArea = Vector3.new(-2820, 72, -3360)},
-    {min = 851, max = 900, npc = "MarineCaptain", location = Vector3.new(-2828, 73, -3497), mobArea = Vector3.new(-2850, 73, -3510)},
-    {min = 901, max = 950, npc = "Zombie", location = Vector3.new(-546, 34, -486), mobArea = Vector3.new(-570, 34, -500)},
-    {min = 951, max = 1000, npc = "Vampire", location = Vector3.new(-549, 30, -609), mobArea = Vector3.new(-570, 30, -630)},
-    {min = 1001, max = 1050, npc = "Snowman", location = Vector3.new(529, 154, -433), mobArea = Vector3.new(500, 154, -450)},
-    {min = 1051, max = 1100, npc = "SnowTrooper", location = Vector3.new(705, 158, -543), mobArea = Vector3.new(680, 158, -560)},
-    {min = 1101, max = 1150, npc = "LabSubordinate", location = Vector3.new(-4117, 345, -2661), mobArea = Vector3.new(-4140, 345, -2680)},
-    {min = 1151, max = 1200, npc = "HornedMan", location = Vector3.new(-4183, 343, -2788), mobArea = Vector3.new(-4200, 343, -2800)},
-    {min = 1201, max = 1250, npc = "Diamond", location = Vector3.new(-1665, 243, 85), mobArea = Vector3.new(-1680, 243, 100)},
-    {min = 1251, max = 1300, npc = "PirateMilitia", location = Vector3.new(-1266, 73, 967), mobArea = Vector3.new(-1280, 73, 980)},
-    {min = 1301, max = 1350, npc = "Gunslinger", location = Vector3.new(-1393, 64, 990), mobArea = Vector3.new(-1410, 64, 1010)},
-    {min = 1351, max = 1400, npc = "Crewmate", location = Vector3.new(-285, 44, 1643), mobArea = Vector3.new(-300, 44, 1660)},
-    {min = 1401, max = 1450, npc = "Bentham", location = Vector3.new(-138, 46, 1634), mobArea = Vector3.new(-160, 46, 1650)},
-    {min = 1451, max = 1525, npc = "DonSwan", location = Vector3.new(288, 31, 1629), mobArea = Vector3.new(260, 31, 1650)},
-    {min = 1526, max = 1575, npc = "Pirate", location = Vector3.new(-1110, 12, 3870), mobArea = Vector3.new(-1130, 12, 3890)},
-    {min = 1576, max = 1625, npc = "Brute", location = Vector3.new(-1116, 14, 3966), mobArea = Vector3.new(-1140, 14, 3980)},
-    {min = 1626, max = 1675, npc = "Gladiator", location = Vector3.new(1364, 25, 1190), mobArea = Vector3.new(1340, 25, 1210)},
-    {min = 1676, max = 1725, npc = "MilitarySoldier", location = Vector3.new(1322, 24, 1127), mobArea = Vector3.new(1300, 24, 1140)},
-    {min = 1726, max = 1775, npc = "Marine", location = Vector3.new(-2620, 198, 3199), mobArea = Vector3.new(-2640, 198, 3220)},
-    {min = 1776, max = 1825, npc = "MarineCaptain", location = Vector3.new(-2628, 199, 3316), mobArea = Vector3.new(-2650, 199, 3330)},
-    {min = 1826, max = 1875, npc = "Thug", location = Vector3.new(-3244, 246, 952), mobArea = Vector3.new(-3260, 246, 970)},
-    {min = 1876, max = 1925, npc = "Raider", location = Vector3.new(-3256, 247, 832), mobArea = Vector3.new(-3280, 247, 850)},
-    {min = 1926, max = 1975, npc = "GalleyPirate", location = Vector3.new(-456, 77, -2960), mobArea = Vector3.new(-480, 77, -2980)},
-    {min = 1976, max = 2025, npc = "GalleyCaptain", location = Vector3.new(-444, 78, -3088), mobArea = Vector3.new(-470, 78, -3100)},
-    {min = 2026, max = 2075, npc = "Pirate", location = Vector3.new(5694, 613, -132), mobArea = Vector3.new(5670, 613, -150)},
-    {min = 2076, max = 2125, npc = "Brute", location = Vector3.new(5782, 614, -192), mobArea = Vector3.new(5760, 614, -210)},
-    {min = 2126, max = 2175, npc = "Pirate", location = Vector3.new(-1683, 35, -5038), mobArea = Vector3.new(-1700, 35, -5060)},
-    {min = 2176, max = 2225, npc = "Brute", location = Vector3.new(-1615, 37, -5117), mobArea = Vector3.new(-1640, 37, -5140)},
-    {min = 2226, max = 2275, npc = "Firefighter", location = Vector3.new(-134, 445, -202), mobArea = Vector3.new(-160, 445, -220)},
-    {min = 2276, max = 2325, npc = "Scientist", location = Vector3.new(-76, 444, -219), mobArea = Vector3.new(-100, 444, -240)},
-    {min = 2326, max = 2375, npc = "Zombie", location = Vector3.new(-2249, 445, -815), mobArea = Vector3.new(-2270, 445, -830)},
-    {min = 2376, max = 2425, npc = "Vampire", location = Vector3.new(-2344, 445, -934), mobArea = Vector3.new(-2370, 445, -950)},
-    {min = 2426, max = 2475, npc = "Ghost", location = Vector3.new(-4550, 390, -3672), mobArea = Vector3.new(-4570, 390, -3690)},
-    {min = 2476, max = 2525, npc = "Reaper", location = Vector3.new(-4727, 391, -3802), mobArea = Vector3.new(-4750, 391, -3820)},
-    {min = 2526, max = 2600, npc = "DragonCrew", location = Vector3.new(-5374, 309, -5053), mobArea = Vector3.new(-5400, 309, -5070)},
+    {min = 1, max = 10, npc = "Bandit", questID = 1, location = Vector3.new(1120, 13, 1450), mobArea = Vector3.new(1100, 13, 1480)},
+    {min = 11, max = 20, npc = "Monkey", questID = 1, location = Vector3.new(-1177, 68, 292), mobArea = Vector3.new(-1200, 68, 320)},
+    {min = 21, max = 30, npc = "Pirate", questID = 1, location = Vector3.new(2677, 28, 180), mobArea = Vector3.new(2650, 28, 200)},
+    {min = 31, max = 40, npc = "Brute", questID = 1, location = Vector3.new(2865, 29, 482), mobArea = Vector3.new(2840, 29, 510)},
+    {min = 41, max = 50, npc = "Viking", questID = 1, location = Vector3.new(249, 51, 435), mobArea = Vector3.new(220, 51, 460)},
+    {min = 51, max = 70, npc = "SnowTrooper", questID = 1, location = Vector3.new(873, 114, -1269), mobArea = Vector3.new(850, 114, -1290)},
+    {min = 71, max = 85, npc = "ChiefPettyOfficer", questID = 1, location = Vector3.new(-438, 18, 618), mobArea = Vector3.new(-460, 18, 640)},
+    {min = 86, max = 100, npc = "SkyBandit", questID = 1, location = Vector3.new(-4838, 721, -2660), mobArea = Vector3.new(-4860, 721, -2680)},
+    {min = 101, max = 120, npc = "DarkMaster", questID = 1, location = Vector3.new(-5174, 593, -2759), mobArea = Vector3.new(-5200, 593, -2780)},
+    {min = 121, max = 140, npc = "Toga", questID = 1, location = Vector3.new(-5236, 817, -3103), mobArea = Vector3.new(-5260, 817, -3120)},
+    {min = 141, max = 160, npc = "Fishman", questID = 1, location = Vector3.new(3928, 10, -1032), mobArea = Vector3.new(3900, 10, -1050)},
+    {min = 161, max = 180, npc = "FishmanCommander", questID = 1, location = Vector3.new(3904, 12, -1408), mobArea = Vector3.new(3880, 12, -1430)},
+    {min = 181, max = 210, npc = "GalleyPirate", questID = 1, location = Vector3.new(5598, 13, 700), mobArea = Vector3.new(5570, 13, 720)},
+    {min = 211, max = 240, npc = "GalleyCaptain", questID = 1, location = Vector3.new(5697, 14, 686), mobArea = Vector3.new(5670, 14, 710)},
+    {min = 241, max = 270, npc = "Marine", questID = 1, location = Vector3.new(-2937, 12, -2857), mobArea = Vector3.new(-2960, 12, -2880)},
+    {min = 271, max = 300, npc = "MarineCaptain", questID = 1, location = Vector3.new(-2936, 13, -2998), mobArea = Vector3.new(-2960, 13, -3020)},
+    {min = 301, max = 330, npc = "Prisoner", questID = 1, location = Vector3.new(5308, 18, 42), mobArea = Vector3.new(5280, 18, 60)},
+    {min = 331, max = 360, npc = "DangerousPrisoner", questID = 1, location = Vector3.new(5310, 16, 137), mobArea = Vector3.new(5280, 16, 160)},
+    {min = 361, max = 400, npc = "MilitarySoldier", questID = 1, location = Vector3.new(-2381, 23, -2352), mobArea = Vector3.new(-2400, 23, -2370)},
+    {min = 401, max = 450, npc = "MilitarySpy", questID = 1, location = Vector3.new(-2581, 24, -2485), mobArea = Vector3.new(-2600, 24, -2500)},
+    {min = 451, max = 500, npc = "SaberExpert", questID = 1, location = Vector3.new(1432, 11, 26), mobArea = Vector3.new(1410, 11, 50)},
+    {min = 501, max = 550, npc = "GodHuman", questID = 1, location = Vector3.new(-4652, 822, -3030), mobArea = Vector3.new(-4670, 822, -3050)},
+    {min = 551, max = 600, npc = "CursedCaptain", questID = 1, location = Vector3.new(3637, 17, -354), mobArea = Vector3.new(3610, 17, -370)},
+    {min = 601, max = 650, npc = "IceAdmiral", questID = 1, location = Vector3.new(1562, 13, 433), mobArea = Vector3.new(1540, 13, 450)},
+    {min = 651, max = 700, npc = "MagmaNinja", questID = 1, location = Vector3.new(-5718, 9, 273), mobArea = Vector3.new(-5740, 9, 290)},
+    {min = 701, max = 725, npc = "Raider", questID = 1, location = Vector3.new(771, 31, 1351), mobArea = Vector3.new(750, 31, 1370)},
+    {min = 726, max = 750, npc = "Mercenary", questID = 1, location = Vector3.new(786, 32, 1172), mobArea = Vector3.new(760, 32, 1190)},
+    {min = 751, max = 775, npc = "SwanPirate", questID = 1, location = Vector3.new(527, 18, 1406), mobArea = Vector3.new(500, 18, 1420)},
+    {min = 776, max = 800, npc = "FactoryStaff", questID = 1, location = Vector3.new(435, 209, -376), mobArea = Vector3.new(410, 209, -390)},
+    {min = 801, max = 850, npc = "MarineLieutenant", questID = 1, location = Vector3.new(-2804, 72, -3342), mobArea = Vector3.new(-2820, 72, -3360)},
+    {min = 851, max = 900, npc = "MarineCaptain", questID = 1, location = Vector3.new(-2828, 73, -3497), mobArea = Vector3.new(-2850, 73, -3510)},
+    {min = 901, max = 950, npc = "Zombie", questID = 1, location = Vector3.new(-546, 34, -486), mobArea = Vector3.new(-570, 34, -500)},
+    {min = 951, max = 1000, npc = "Vampire", questID = 1, location = Vector3.new(-549, 30, -609), mobArea = Vector3.new(-570, 30, -630)},
+    {min = 1001, max = 1050, npc = "Snowman", questID = 1, location = Vector3.new(529, 154, -433), mobArea = Vector3.new(500, 154, -450)},
+    {min = 1051, max = 1100, npc = "SnowTrooper", questID = 1, location = Vector3.new(705, 158, -543), mobArea = Vector3.new(680, 158, -560)},
+    {min = 1101, max = 1150, npc = "LabSubordinate", questID = 1, location = Vector3.new(-4117, 345, -2661), mobArea = Vector3.new(-4140, 345, -2680)},
+    {min = 1151, max = 1200, npc = "HornedMan", questID = 1, location = Vector3.new(-4183, 343, -2788), mobArea = Vector3.new(-4200, 343, -2800)},
+    {min = 1201, max = 1250, npc = "Diamond", questID = 1, location = Vector3.new(-1665, 243, 85), mobArea = Vector3.new(-1680, 243, 100)},
+    {min = 1251, max = 1300, npc = "PirateMilitia", questID = 1, location = Vector3.new(-1266, 73, 967), mobArea = Vector3.new(-1280, 73, 980)},
+    {min = 1301, max = 1350, npc = "Gunslinger", questID = 1, location = Vector3.new(-1393, 64, 990), mobArea = Vector3.new(-1410, 64, 1010)},
+    {min = 1351, max = 1400, npc = "Crewmate", questID = 1, location = Vector3.new(-285, 44, 1643), mobArea = Vector3.new(-300, 44, 1660)},
+    {min = 1401, max = 1450, npc = "Bentham", questID = 1, location = Vector3.new(-138, 46, 1634), mobArea = Vector3.new(-160, 46, 1650)},
+    {min = 1451, max = 1525, npc = "DonSwan", questID = 1, location = Vector3.new(288, 31, 1629), mobArea = Vector3.new(260, 31, 1650)},
+    {min = 1526, max = 1575, npc = "Pirate", questID = 1, location = Vector3.new(-1110, 12, 3870), mobArea = Vector3.new(-1130, 12, 3890)},
+    {min = 1576, max = 1625, npc = "Brute", questID = 1, location = Vector3.new(-1116, 14, 3966), mobArea = Vector3.new(-1140, 14, 3980)},
+    {min = 1626, max = 1675, npc = "Gladiator", questID = 1, location = Vector3.new(1364, 25, 1190), mobArea = Vector3.new(1340, 25, 1210)},
+    {min = 1676, max = 1725, npc = "MilitarySoldier", questID = 1, location = Vector3.new(1322, 24, 1127), mobArea = Vector3.new(1300, 24, 1140)},
+    {min = 1726, max = 1775, npc = "Marine", questID = 1, location = Vector3.new(-2620, 198, 3199), mobArea = Vector3.new(-2640, 198, 3220)},
+    {min = 1776, max = 1825, npc = "MarineCaptain", questID = 1, location = Vector3.new(-2628, 199, 3316), mobArea = Vector3.new(-2650, 199, 3330)},
+    {min = 1826, max = 1875, npc = "Thug", questID = 1, location = Vector3.new(-3244, 246, 952), mobArea = Vector3.new(-3260, 246, 970)},
+    {min = 1876, max = 1925, npc = "Raider", questID = 1, location = Vector3.new(-3256, 247, 832), mobArea = Vector3.new(-3280, 247, 850)},
+    {min = 1926, max = 1975, npc = "GalleyPirate", questID = 1, location = Vector3.new(-456, 77, -2960), mobArea = Vector3.new(-480, 77, -2980)},
+    {min = 1976, max = 2025, npc = "GalleyCaptain", questID = 1, location = Vector3.new(-444, 78, -3088), mobArea = Vector3.new(-470, 78, -3100)},
+    {min = 2026, max = 2075, npc = "Pirate", questID = 1, location = Vector3.new(5694, 613, -132), mobArea = Vector3.new(5670, 613, -150)},
+    {min = 2076, max = 2125, npc = "Brute", questID = 1, location = Vector3.new(5782, 614, -192), mobArea = Vector3.new(5760, 614, -210)},
+    {min = 2126, max = 2175, npc = "Pirate", questID = 1, location = Vector3.new(-1683, 35, -5038), mobArea = Vector3.new(-1700, 35, -5060)},
+    {min = 2176, max = 2225, npc = "Brute", questID = 1, location = Vector3.new(-1615, 37, -5117), mobArea = Vector3.new(-1640, 37, -5140)},
+    {min = 2226, max = 2275, npc = "Firefighter", questID = 1, location = Vector3.new(-134, 445, -202), mobArea = Vector3.new(-160, 445, -220)},
+    {min = 2276, max = 2325, npc = "Scientist", questID = 1, location = Vector3.new(-76, 444, -219), mobArea = Vector3.new(-100, 444, -240)},
+    {min = 2326, max = 2375, npc = "Zombie", questID = 1, location = Vector3.new(-2249, 445, -815), mobArea = Vector3.new(-2270, 445, -830)},
+    {min = 2376, max = 2425, npc = "Vampire", questID = 1, location = Vector3.new(-2344, 445, -934), mobArea = Vector3.new(-2370, 445, -950)},
+    {min = 2426, max = 2475, npc = "Ghost", questID = 1, location = Vector3.new(-4550, 390, -3672), mobArea = Vector3.new(-4570, 390, -3690)},
+    {min = 2476, max = 2525, npc = "Reaper", questID = 1, location = Vector3.new(-4727, 391, -3802), mobArea = Vector3.new(-4750, 391, -3820)},
+    {min = 2526, max = 2600, npc = "DragonCrew", questID = 1, location = Vector3.new(-5374, 309, -5053), mobArea = Vector3.new(-5400, 309, -5070)},
 }
 
 function GetQuestByLevel(level)
@@ -134,6 +133,49 @@ function GetQuestByLevel(level)
         if level >= q.min and level <= q.max then return q end
     end
     return QuestLevels[1]
+end
+
+-- ==================== KIỂM TRA QUEST ====================
+local function IsQuestAccepted()
+    pcall(function()
+        local playerGui = Player:FindFirstChild("PlayerGui")
+        if playerGui and playerGui:FindFirstChild("Main") then
+            local quest = playerGui.Main:FindFirstChild("Quest")
+            if quest and quest.Visible then
+                return true
+            end
+        end
+    end)
+    return false
+end
+
+-- ==================== NHẬN QUEST ====================
+local function AcceptQuest(questData)
+    if not questData then return false end
+    
+    local remote = ReplicatedStorage:FindFirstChild("Remotes")
+    if not remote then
+        print("❌ Không tìm thấy Remotes")
+        return false
+    end
+    
+    local commF = remote:FindFirstChild("CommF_")
+    if not commF then
+        print("❌ Không tìm thấy CommF_")
+        return false
+    end
+    
+    local success, result = pcall(function()
+        return commF:InvokeServer("StartQuest", questData.npc, questData.questID)
+    end)
+    
+    if success and result == 0 then
+        print("✅ NHẬN QUEST THÀNH CÔNG: " .. questData.npc)
+        return true
+    else
+        print("⚠️ Nhận quest thất bại: " .. questData.npc)
+        return false
+    end
 end
 
 -- ==================== NOCLIP ====================
@@ -172,55 +214,6 @@ task.spawn(function()
         end
     end
 end)
-
--- ==================== KIỂM TRA QUEST ====================
-local function IsQuestAccepted()
-    pcall(function()
-        local playerGui = Player:FindFirstChild("PlayerGui")
-        if playerGui and playerGui:FindFirstChild("Main") then
-            local quest = playerGui.Main:FindFirstChild("Quest")
-            if quest and quest.Visible then
-                return true
-            end
-        end
-    end)
-    return false
-end
-
--- ==================== NHẬN QUEST ====================
-local function AcceptQuest(questData)
-    if not questData then return false end
-    
-    pcall(function()
-        if _G.QuestMethod == "Remote" then
-            local remote = ReplicatedStorage:FindFirstChild("Remotes")
-            if remote then
-                local commF = remote:FindFirstChild("CommF_")
-                if commF then
-                    local result = commF:InvokeServer("StartQuest", questData.npc)
-                    if result == 0 then
-                        print("✅ NHẬN QUEST THÀNH CÔNG: " .. questData.npc)
-                        return true
-                    end
-                end
-            end
-        else
-            local playerGui = Player:FindFirstChild("PlayerGui")
-            if playerGui and playerGui:FindFirstChild("Main") then
-                local quest = playerGui.Main:FindFirstChild("Quest")
-                if quest then
-                    local acceptBtn = quest:FindFirstChild("AcceptButton")
-                    if acceptBtn then
-                        acceptBtn:Fire()
-                        print("✅ NHẬN QUEST THÀNH CÔNG (Click): " .. questData.npc)
-                        return true
-                    end
-                end
-            end
-        end
-    end)
-    return false
-end
 
 -- ==================== BRING MOB ====================
 task.spawn(function()
@@ -266,34 +259,44 @@ task.spawn(function()
     end
 end)
 
--- ==================== MAIN LOOP FARM ====================
+-- ==================== MAIN LOOP FARM (LOGIC AUTO QUEST MỚI NHẤT) ====================
 task.spawn(function()
     while true do
         task.wait(0.5)
         if _G.AutoFarm and not _G.Busy then
             pcall(function()
-                local playerLevel = Player.Data.Level.Value
-                local questData = GetQuestByLevel(playerLevel)
+                local pLevel = Player.Data.Level.Value
+                local qData = GetQuestByLevel(pLevel)
                 
+                -- BƯỚC 1: KIỂM TRA XEM ĐÃ CÓ QUEST CHƯA
                 if not IsQuestAccepted() then
-                    _G.Busy = true
-                    print("🚀 Đang đi nhận nhiệm vụ...")
+                    _G.Busy = true -- Khóa logic lại, không cho vòng lặp chạy đè lên
                     
-                    TweenToPosition(questData.location)
-                    task.wait(0.8)
+                    warn("🚀 Đang đi nhận nhiệm vụ: " .. qData.npc)
                     
-                    local success = AcceptQuest(questData)
+                    -- Bay lên cao hơn NPC một chút để tránh kẹt
+                    TweenToPosition(qData.location + Vector3.new(0, 12, 0))
+                    task.wait(0.5)
                     
-                    if success then
-                        print("✅ Xong! Chờ 1.5s để Server cập nhật...")
-                        task.wait(1.5)
-                        print("✅ Bay đi farm thôi!")
-                        TweenToPosition(questData.mobArea)
+                    -- Gọi hàm nhận Quest
+                    local success = AcceptQuest(qData)
+                    
+                    if not success then
+                        warn("⚠️ Nhận thất bại, đợi 2 giây thử lại...")
+                        task.wait(2)
                     end
                     
-                    _G.Busy = false
+                    _G.Busy = false -- Mở khóa sau khi xong quá trình nhận
                 else
-                    TweenToPosition(questData.mobArea)
+                    -- BƯỚC 2: ĐÃ CÓ QUEST -> BAY ĐI FARM
+                    -- Bay đến khu vực quái (Cũng nên bay cao hơn một chút)
+                    TweenToPosition(qData.mobArea + Vector3.new(0, 15, 0))
+                    task.wait(0.3)
+                    
+                    -- Hiển thị trạng thái farm
+                    if math.random(1, 30) == 1 then
+                        print("🔥 Đang farm | Level: " .. pLevel .. " | Quái: " .. qData.npc)
+                    end
                 end
             end)
         end
@@ -358,19 +361,12 @@ settingGroup:AddSlider({
     Callback = function(v) _G.AttackDelay = v end
 })
 
-settingGroup:AddDropdown({
-    Title = "📜 Phương thức nhận quest",
-    Values = {"Remote", "Click"},
-    Default = "Remote",
-    Callback = function(v) _G.QuestMethod = v end
-})
-
 -- ==================== HIỂN THỊ UI ====================
 UI.ToggleUI()
 print("=" .. string.rep("=", 40))
-print("✅ Apple Hub Premium - KẾT HỢP HOÀN CHỈNH!")
-print("📌 Logic bay: Từ code cũ của bạn (TweenService)")
-print("📌 Logic auto quest: Từ code mới (InvokeServer + Click)")
-print("📌 Có biến _G.Busy chống loop")
-print("📌 Có noclip + anti-fall + bring mob + auto attack")
+print("✅ Apple Hub Premium - AUTO QUEST ĐÃ GHÉP HOÀN CHỈNH!")
+print("📌 Logic bay: Giữ nguyên từ code cũ")
+print("📌 Logic auto quest: Mới nhất, có _G.Busy chống giật")
+print("📌 Bay cao hơn NPC 12-15 studs để tránh kẹt")
+print("📌 Hướng dẫn: Bấm 'BẬT AUTO FARM' để bắt đầu")
 print("=" .. string.rep("=", 40)) 
