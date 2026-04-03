@@ -122,7 +122,6 @@ function TweenToPosition(targetPos)
             ToggleNoclip(false)
         end)
         
-        -- TIMEOUT SAFETY
         task.spawn(function()
             task.wait(tweenTime + 3)
             if isTweening then
@@ -267,24 +266,18 @@ function GetCurrentSea(level)
     else return 1 end
 end
 
--- ==================== PREMIUM IsQuestAccepted ====================
+-- ==================== IsQuestAccepted ====================
 function IsQuestAccepted()
-    local success, result = pcall(function()
+    pcall(function()
         local main = playerGui:FindFirstChild("Main")
-        if not main then return false end
-        
-        local questContainer = main:FindFirstChild("Quest") 
-            and main.Quest:FindFirstChild("Container")
-        if not questContainer then return false end
-        
-        local questTitle = questContainer:FindFirstChild("QuestTitle")
-        local isVisible = questContainer.Visible
-        local hasText = questTitle and questTitle.Text ~= ""
-        
-        return isVisible and hasText
+        if main then
+            local quest = main:FindFirstChild("Quest")
+            if quest and quest.Visible then
+                return true
+            end
+        end
     end)
-    
-    return success and result or false
+    return false
 end
 
 function GetNearestMob(mobName)
@@ -307,14 +300,12 @@ function GetNearestMob(mobName)
     return closest
 end
 
--- ==================== STATE MACHINE (HUB STANDARD) ====================
+-- ==================== STATE MACHINE ====================
 function RunStateMachine()
     if not _G.AutoFarm or _G.Busy then return end
     
     local char = Player.Character
     if not char or not char:FindFirstChild("HumanoidRootPart") then return end
-    
-    local hrp = char.HumanoidRootPart
     
     if _G.State == "CHECK_QUEST" then
         local level = Player.Data.Level.Value or 1
@@ -336,22 +327,44 @@ function RunStateMachine()
         
     elseif _G.State == "GET_QUEST" then
         local startTime = tick()
-        print("✈️ GET_QUEST START")
+        print("✈️ Đang bay đến NPC để nhận nhiệm vụ...")
         
+        -- Bay đến NPC
         TweenToPosition(_G.CurrentQuest.NPCPos + Vector3.new(0, 10, 0))
+        task.wait(1)
         
-        repeat
-            task.wait(0.2)
+        -- Kiểm tra nếu đã ở gần NPC thì bắt đầu nhận Quest
+        local distToNPC = (HRP.Position - (_G.CurrentQuest.NPCPos + Vector3.new(0, 10, 0))).Magnitude
+        if distToNPC < 25 then
+            -- QUAN TRỌNG: Lệnh gọi Server để nhận nhiệm vụ
+            pcall(function()
+                for i = 1, 3 do
+                    if not IsQuestAccepted() then
+                        game:GetService("ReplicatedStorage").Remotes.CommF_:InvokeServer("StartQuest", _G.CurrentQuest.QuestName, i)
+                        print("📡 Đã gửi yêu cầu quest ID:", i)
+                        task.wait(0.5)
+                    end
+                end
+            end)
+        end
+        
+        -- Đợi xác nhận đã có Quest
+        local waitCount = 0
+        while waitCount < 20 do
+            task.wait(0.5)
             if IsQuestAccepted() then
-                print("✅ QUEST ACCEPTED!")
-                task.wait(1)
+                print("✅ Đã nhận xong! Chuyển sang bay đi farm.")
+                task.wait(0.5)
                 _G.State = "MOVING_TO_FARM"
                 return
             end
-        until tick() - startTime > 8
+            waitCount = waitCount + 1
+        end
         
-        print("⏰ GET_QUEST TIMEOUT -> CHECK_QUEST")
-        _G.State = "CHECK_QUEST"
+        if tick() - startTime > 10 then
+            print("⏰ Đợi lâu quá không nhận được, reset lại...")
+            _G.State = "CHECK_QUEST"
+        end
         
     elseif _G.State == "MOVING_TO_FARM" then
         print("🌾 MOVING TO FARM")
@@ -359,7 +372,7 @@ function RunStateMachine()
         
         TweenToPosition(mobArea)
         
-        local distance = (hrp.Position - mobArea).Magnitude
+        local distance = (HRP.Position - mobArea).Magnitude
         if distance < DISTANCE_THRESHOLD then
             print("✅ ĐẾN BÃI FARM -> FARMING")
             _G.State = "FARMING"
@@ -375,7 +388,7 @@ function RunStateMachine()
         local mob = GetNearestMob(_G.CurrentQuest.MobName)
         if mob then
             local mobPos = mob.HumanoidRootPart.Position
-            local distanceToMob = (hrp.Position - mobPos).Magnitude
+            local distanceToMob = (HRP.Position - mobPos).Magnitude
             
             if distanceToMob > 10 then
                 TweenToPosition(mobPos + Vector3.new(0, 5, 0))
@@ -471,9 +484,8 @@ settingGroup:AddSlider({
 
 UI.ToggleUI()
 print("=" .. string.rep("=", 50))
-print("✅ HUB STANDARD - AUTO FARM ĐÃ SẴN SÀNG!")
-print("📌 IsQuestAccepted: Kiểm tra QuestTitle TEXT + Container VISIBLE")
-print("📌 Timeout 8s cho GET_QUEST, tránh treo vô hạn")
-print("📌 AutoFarm Toggle có FULL RESET state")
+print("✅ AUTO FARM ĐÃ SẴN SÀNG!")
+print("📌 State Machine: CHECK_QUEST → GET_QUEST → MOVING_TO_FARM → FARMING")
+print("📌 GET_QUEST có timeout 10s và kiểm tra khoảng cách NPC")
 print("📌 Bấm 'BẬT AUTO FARM' để bắt đầu")
-print("=" .. string.rep("=", 50)) 
+print("=" .. string.rep("=", 50))
