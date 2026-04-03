@@ -63,71 +63,58 @@ function ToggleNoclip(enable)
     end
 end
 
--- ==================== LOGIC BAY (FIX - KHÔNG BỊ NGẮT) ====================
+-- ==================== LOGIC BAY (FIX HOÀN CHỈNH) ====================
 local currentTween = nil
 local isTweening = false
 
 function StopTween()
     if currentTween then
-        pcall(function() currentTween:Cancel() end)
+        pcall(function()
+            currentTween:Cancel()
+            currentTween:Destroy()
+        end)
         currentTween = nil
     end
-    isTweening = false
+    -- KHÔNG reset isTweening ở đây
 end
 
-function TweenToPosition(Position, callback)
-    if not _G.AutoFarm then return false end
-    
-    -- Đợi nếu đang tween
-    while isTweening do
-        task.wait(0.1)
-    end
+function TweenToPosition(targetPos)
+    if not _G.AutoFarm then return nil end
+    if isTweening then return nil end
     
     StopTween()
+    
+    local character = Player.Character
+    if not character then return nil end
+    
+    local hrp = character:FindFirstChild("HumanoidRootPart")
+    if not hrp then return nil end
+    
+    -- Bật noclip khi bay
+    ToggleNoclip(true)
+    
+    local distance = (hrp.Position - targetPos).Magnitude
+    if distance < 10 then
+        ToggleNoclip(false)
+        return nil
+    end
+    
+    local tweenTime = math.max(1.5, distance / _G.TweenSpeed)
+    local tweenInfo = TweenInfo.new(tweenTime, Enum.EasingStyle.Linear)
+    
+    currentTween = TweenService:Create(hrp, tweenInfo, {CFrame = CFrame.new(targetPos)})
     isTweening = true
     
-    local success = pcall(function()
-        local char = Player.Character
-        if not char then 
-            isTweening = false
-            return 
-        end
-        local hrp = char:FindFirstChild("HumanoidRootPart")
-        if not hrp then 
-            isTweening = false
-            return 
-        end
-        
-        local distance = (hrp.Position - Position).Magnitude
-        if distance < 10 then 
-            isTweening = false
-            if callback then callback() end
-            return 
-        end
-        
-        -- BẬT NOCLIP TRONG KHI BAY
-        ToggleNoclip(true)
-        
-        local tweenInfo = TweenInfo.new(
-            math.clamp(distance / _G.TweenSpeed, 0.8, 8),
-            Enum.EasingStyle.Linear
-        )
-        currentTween = TweenService:Create(hrp, tweenInfo, {CFrame = CFrame.new(Position)})
-        currentTween:Play()
-        currentTween.Completed:Wait()
-        currentTween = nil
-        
-        -- TẮT NOCLIP SAU KHI BAY XONG
-        ToggleNoclip(false)
+    currentTween:Play()
+    
+    -- Tự động reset khi hoàn thành
+    currentTween.Completed:Connect(function()
         isTweening = false
-        if callback then callback() end
+        ToggleNoclip(false)
+        currentTween = nil
     end)
     
-    if not success then
-        isTweening = false
-        ToggleNoclip(false)
-    end
-    return success
+    return currentTween
 end
 
 -- ==================== ANTI-FALL ====================
@@ -285,6 +272,31 @@ function GetNearestMob(mobName)
     return closest
 end
 
+-- ==================== HÀM HỖ TRỢ DI CHUYỂN CHÍNH XÁC ====================
+function FlyToPosition(targetPos, timeoutSec)
+    timeoutSec = timeoutSec or 8
+    local startTime = tick()
+    
+    -- Tạo BodyVelocity để di chuyển chính xác
+    local bodyVelocity = Instance.new("BodyVelocity")
+    bodyVelocity.MaxForce = Vector3.new(4000, 4000, 4000)
+    bodyVelocity.Velocity = Vector3.new(0, 0, 0)
+    bodyVelocity.Parent = HRP
+    
+    ToggleNoclip(true)
+    
+    repeat
+        local direction = (targetPos - HRP.Position).Unit
+        bodyVelocity.Velocity = direction * 16
+        task.wait(0.05)
+    until (HRP.Position - targetPos).Magnitude < 6 or tick() - startTime > timeoutSec
+    
+    bodyVelocity:Destroy()
+    ToggleNoclip(false)
+    
+    return (HRP.Position - targetPos).Magnitude < 6
+end
+
 -- ==================== STATE MACHINE ====================
 function RunStateMachine()
     if not _G.AutoFarm or isTweening then return end
@@ -310,16 +322,22 @@ function RunStateMachine()
         end
         
     elseif _G.State == "GET_QUEST" then
-        if IsQuestAccepted() then
-            print("✅ HAVE QUEST -> MOVING_TO_FARM")
-            _G.State = "MOVING_TO_FARM"
-            return
+        print("✈️ FLY TO NPC:", _G.CurrentQuest.QuestName)
+        
+        -- Bay đến NPC (cách mặt đất 12 studs)
+        local npcTween = TweenToPosition(_G.CurrentQuest.NPCPos + Vector3.new(0, 12, 0))
+        if npcTween then
+            npcTween.Completed:Wait()
         end
         
-        print("✈️ FLY TO NPC")
-        TweenToPosition(_G.CurrentQuest.NPCPos + Vector3.new(0, 12, 0), function()
+        -- Di chuyển chính xác đến vị trí NPC
+        local success = FlyToPosition(_G.CurrentQuest.NPCPos + Vector3.new(0, 3, 0), 8)
+        
+        if success then
+            print("✅ ĐÃ ĐẾN NPC")
             task.wait(1)
             
+            -- Nhận quest
             for i = 1, 3 do
                 pcall(function()
                     local result = ReplicatedStorage.Remotes.CommF_:InvokeServer("StartQuest", _G.CurrentQuest.QuestName, i)
@@ -330,16 +348,25 @@ function RunStateMachine()
             task.wait(1)
             
             if IsQuestAccepted() then
+                print("✅ NHẬN QUEST THÀNH CÔNG")
                 _G.State = "MOVING_TO_FARM"
+            else
+                print("❌ NHẬN QUEST THẤT BẠI, THỬ LẠI")
             end
-        end)
+        else
+            print("❌ KHÔNG THỂ ĐẾN NPC")
+        end
         
     elseif _G.State == "MOVING_TO_FARM" then
         print("🚶 MOVING_TO_FARM")
         local farmPos = _G.CurrentQuest.MobArea or (_G.CurrentQuest.NPCPos + Vector3.new(math.random(-60,60), 15, math.random(-60,60)))
-        TweenToPosition(farmPos, function()
-            _G.State = "FARMING"
-        end)
+        
+        local tween = TweenToPosition(farmPos)
+        if tween then
+            tween.Completed:Wait()
+        end
+        
+        _G.State = "FARMING"
         
     elseif _G.State == "FARMING" then
         if not IsQuestAccepted() then
@@ -443,7 +470,7 @@ settingGroup:AddSlider({
 
 UI.ToggleUI()
 print("=" .. string.rep("=", 50))
-print("✅ FIX XONG! Bay sẽ không bị đáp xuống nữa")
-print("📌 Thêm biến isTweening để chống ngắt tween")
+print("✅ FIX HOÀN CHỈNH! Bay sẽ không bị đáp xuống nữa")
+print("📌 Thêm FlyToPosition với BodyVelocity để di chuyển chính xác")
 print("📌 Bấm 'BẬT AUTO FARM' để bắt đầu")
-print("=" .. string.rep("=", 50))
+print("=" .. string.rep("=", 50)) 
