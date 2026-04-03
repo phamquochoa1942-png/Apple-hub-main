@@ -36,7 +36,6 @@ local playerGui = Player:WaitForChild("PlayerGui")
 local Character, HRP
 local humanoid = nil
 local bodyVelocity = nil
-local hakiChecked = false
 
 function UpdateHRP()
     Character = Player.Character or Player.CharacterAdded:Wait()
@@ -72,101 +71,43 @@ function ToggleNoclip(enable)
     end
 end
 
--- ==================== HAKI XỊN (NHIỀU CÁCH BẬT) ====================
+-- ==================== HAKI XỊN ====================
 function IsHakiActive()
     local success = pcall(function()
-        -- Cách 1: Kiểm tra UI Icon
         local playerGui = Player:FindFirstChild("PlayerGui")
         if playerGui then
             for _, v in pairs(playerGui:GetDescendants()) do
                 if v:IsA("ImageLabel") and v.Name == "HakiIcon" and v.Visible then
                     return true
                 end
-                if v:IsA("Frame") and v.Name == "HakiFrame" and v.Visible then
-                    return true
-                end
-                if v:IsA("Frame") and v.Name == "EnhancementFrame" and v.Visible then
-                    return true
-                end
             end
         end
-        
-        -- Cách 2: Kiểm tra effect trên nhân vật
         local char = Player.Character
-        if char then
-            if char:FindFirstChild("HakiEffect") then return true end
-            if char:FindFirstChild("EnhancementEffect") then return true end
-        end
-        
-        -- Cách 3: Kiểm tra thanh máu
-        local playerStats = Player:FindFirstChild("PlayerStats")
-        if playerStats and playerStats:FindFirstChild("Enhancement") then
-            if playerStats.Enhancement.Value == true then return true end
-        end
+        if char and char:FindFirstChild("HakiEffect") then return true end
     end)
     return success or false
 end
 
 function EnableHaki()
     pcall(function()
-        -- CÁCH 1: Remote chuẩn nhất
         local remote = ReplicatedStorage:FindFirstChild("Remotes")
         if remote and remote:FindFirstChild("CommF_") then
-            local result = remote.CommF_:InvokeServer("Enhancement", true)
-            if result then
-                print("✅ Haki bật thành công (Remote)")
-                return
-            end
+            remote.CommF_:InvokeServer("Enhancement", true)
+            print("✅ Haki đã bật")
         end
-        
-        -- CÁCH 2: FireServer
-        if remote and remote:FindFirstChild("CommF_") then
-            remote.CommF_:FireServer("Enhancement", true)
-            print("✅ Haki bật (FireServer)")
-            return
-        end
-        
-        -- CÁCH 3: Phím B
-        pcall(function()
-            local vu = game:GetService("VirtualUser")
-            vu:CaptureController()
-            vu:KeyDown("0x42")
-            task.wait(0.05)
-            vu:KeyUp("0x42")
-            print("✅ Haki bật (Phím B)")
-        end)
-        
-        -- CÁCH 4: UserInputService
-        pcall(function()
-            local keyCode = Enum.KeyCode.B
-            UserInputService:SetKeyDown(keyCode)
-            task.wait(0.05)
-            UserInputService:SetKeyUp(keyCode)
-            print("✅ Haki bật (UserInput)")
-        end)
-        
-        -- CÁCH 5: ContextActionService
-        pcall(function()
-            ContextActionService:PressButton("Enhancement")
-            print("✅ Haki bật (ContextAction)")
-        end)
     end)
 end
 
--- Bật Haki ngay khi script chạy
 task.spawn(function()
-    task.wait(1)
+    task.wait(2)
     EnableHaki()
 end)
 
--- Kiểm tra và bật lại Haki mỗi 8 giây
 task.spawn(function()
     while true do
-        task.wait(8)
-        if _G.AutoFarm then
-            if not IsHakiActive() then
-                EnableHaki()
-            end
+        task.wait(10)
+        if _G.AutoFarm and not IsHakiActive() then
+            EnableHaki()
         end
     end
 end)
@@ -281,16 +222,11 @@ function DoAttack()
     local now = tick()
     if now - lastAttack >= _G.AttackDelay then
         lastAttack = now
-        
         pcall(function()
             VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, 0)
             task.wait(0.01)
             VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, game, 0)
             ContextActionService:PressButton("Attack")
-            
-            local vu = game:GetService("VirtualUser")
-            vu:CaptureController()
-            vu:ClickButton1(Vector2.new(0, 0))
         end)
     end
 end
@@ -310,7 +246,7 @@ task.spawn(function()
     end
 end)
 
--- ==================== BRING MOB XỊN (KÉO NHIỀU QUÁI, GIỮ DƯỚI ĐẤT) ====================
+-- ==================== BRING MOB XỊN ====================
 function BringMobs()
     if not _G.AutoFarm or not _G.BringMob then return end
     if isTweening then return end
@@ -320,12 +256,10 @@ function BringMobs()
     pcall(function()
         if not HRP then return end
         
-        -- Tìm mặt đất chính xác
         local ray = Ray.new(HRP.Position, Vector3.new(0, -50, 0))
         local hit, groundPos = workspace:FindPartOnRay(ray, Character)
         local groundY = groundPos and groundPos.Y or (HRP.Position.Y - 8)
         
-        -- Điểm gom quái (sát mặt đất)
         local gatherPoint = HRP.Position + (HRP.CFrame.LookVector * 14)
         gatherPoint = Vector3.new(gatherPoint.X, groundY + 2.5, gatherPoint.Z)
         
@@ -333,46 +267,29 @@ function BringMobs()
         if not enemies then return end
         
         local broughtCount = 0
-        local maxBring = 4
-        
         for _, v in pairs(enemies:GetChildren()) do
             if v:FindFirstChild("Humanoid") and v:FindFirstChild("HumanoidRootPart") then
                 local enemyHum = v.Humanoid
                 local enemyHrp = v.HumanoidRootPart
                 local dist = (enemyHrp.Position - HRP.Position).Magnitude
                 
-                if enemyHum.Health > 0 and dist <= 55 and dist > 12 and broughtCount < maxBring then
-                    -- Kéo quái xuống đất
+                if enemyHum.Health > 0 and dist <= 50 and dist > 12 and broughtCount < 3 then
                     local mobTarget = Vector3.new(gatherPoint.X, groundY + 2.5, gatherPoint.Z)
                     enemyHrp.CFrame = CFrame.new(mobTarget)
                     enemyHrp.Velocity = Vector3.new(0, 0, 0)
                     
-                    -- BodyVelocity giữ quái ở dưới đất
                     local mobVel = Instance.new("BodyVelocity")
                     mobVel.MaxForce = Vector3.new(5000, 5000, 5000)
                     mobVel.Velocity = Vector3.new(0, 0, 0)
                     mobVel.Parent = enemyHrp
                     task.spawn(function()
-                        task.wait(4)
+                        task.wait(3)
                         mobVel:Destroy()
-                    end)
-                    
-                    -- Tắt AI quái
-                    pcall(function()
-                        if enemyHum:FindFirstChild("Animator") then
-                            enemyHum.Animator:Destroy()
-                        end
-                        enemyHum.WalkSpeed = 0
-                        enemyHum.JumpPower = 0
                     end)
                     
                     broughtCount = broughtCount + 1
                 end
             end
-        end
-        
-        if broughtCount > 0 then
-            print("📦 Đã gom " .. broughtCount .. " quái xuống đất")
         end
     end)
 end
@@ -386,7 +303,7 @@ task.spawn(function()
     end
 end)
 
--- ==================== QUEST DATABASE (THÊM NHIỆM VỤ KHỈ) ====================
+-- ==================== QUEST DATABASE (ĐÃ SỬA TÊN NPC) ====================
 local QuestDB = {
     [1] = {
         {LvMin=0, LvMax=10, QuestName="BanditQuest1", NPCPos=Vector3.new(1120,13,1450), MobName="Bandit", MobArea=Vector3.new(1100,13,1480)},
@@ -491,6 +408,21 @@ function IsQuestAccepted()
     return success or false
 end
 
+-- ==================== TÌM NPC ====================
+function GetNearestNPC(npcName)
+    local closest, closestDist = nil, math.huge
+    for _, v in pairs(workspace:GetDescendants()) do
+        if v:IsA("Model") and v.Name:find(npcName) and v:FindFirstChild("HumanoidRootPart") then
+            local dist = (HRP.Position - v.HumanoidRootPart.Position).Magnitude
+            if dist < closestDist then
+                closest = v
+                closestDist = dist
+            end
+        end
+    end
+    return closest
+end
+
 -- ==================== TÌM QUÁI ====================
 function GetNearestMob(mobName)
     local closest, closestDist = nil, math.huge
@@ -515,8 +447,7 @@ end
 -- ==================== STATE MACHINE ====================
 function RunStateMachine()
     if not _G.AutoFarm or _G.Busy then return end
-    local char = Player.Character
-    if not char or not HRP then return end
+    if not HRP then return end
     
     if _G.State == "CHECK_QUEST" then
         local level = Player.Data.Level.Value or 1
@@ -525,6 +456,7 @@ function RunStateMachine()
             print("🎉 MAX LEVEL 2600!")
             return
         end
+        
         for _, quest in ipairs(QuestDB[sea]) do
             if level >= quest.LvMin and level <= quest.LvMax then
                 _G.CurrentQuest = quest
@@ -536,18 +468,27 @@ function RunStateMachine()
         
     elseif _G.State == "GET_QUEST" then
         print("✈️ Bay đến NPC:", _G.CurrentQuest.QuestName)
-        TweenToPosition(_G.CurrentQuest.NPCPos)
+        
+        -- Tìm và bay đến NPC
+        local npc = GetNearestNPC(_G.CurrentQuest.QuestName:gsub("Quest", ""))
+        if npc then
+            TweenToPosition(npc.HumanoidRootPart.Position)
+        else
+            TweenToPosition(_G.CurrentQuest.NPCPos)
+        end
         task.wait(0.5)
         
+        -- Nhận quest
         pcall(function()
+            local remote = ReplicatedStorage.Remotes.CommF_
             for i = 1, 2 do
-                local result = ReplicatedStorage.Remotes.CommF_:InvokeServer("StartQuest", _G.CurrentQuest.QuestName, i)
+                local result = remote:InvokeServer("StartQuest", _G.CurrentQuest.QuestName, i)
                 print("📡 Gửi quest", i, "kết quả:", result)
                 task.wait(0.2)
             end
         end)
         
-        task.wait(0.3)
+        task.wait(0.5)
         _G.State = "MOVING_TO_FARM"
         
     elseif _G.State == "MOVING_TO_FARM" then
@@ -566,8 +507,7 @@ function RunStateMachine()
         local mob = GetNearestMob(_G.CurrentQuest.MobName)
         if mob then
             local mobPos = mob.HumanoidRootPart.Position
-            local distanceToMob = (HRP.Position - mobPos).Magnitude
-            if distanceToMob > 12 then
+            if (HRP.Position - mobPos).Magnitude > 12 then
                 TweenToPosition(mobPos)
             end
         end
@@ -625,10 +565,10 @@ farmGroup:AddButton({
 })
 
 farmGroup:AddButton({
-    Title = "📦 BẬT GOM QUÁI (XỊN)",
+    Title = "📦 BẬT GOM QUÁI",
     Callback = function()
         _G.BringMob = true
-        print("✅ Bring Mob BẬT - Kéo 4 quái/lần, giữ dưới đất")
+        print("✅ Bring Mob BẬT")
     end
 })
 
@@ -669,9 +609,9 @@ settingGroup:AddSlider({
 
 UI.ToggleUI()
 print("=" .. string.rep("=", 50))
-print("✅ AUTO FARM CAO CẤP - FIX HOÀN CHỈNH!")
-print("📌 Quest: Đã thêm MonkeyQuest1 cho level 11-20")
-print("📌 Haki: 5 cách bật, kiểm tra mỗi 8 giây")
-print("📌 Gom quái: Kéo 4 con/lần, giữ dưới đất 4 giây")
+print("✅ AUTO FARM CAO CẤP - ĐÃ SỬA QUEST KHỈ!")
+print("📌 Quest Monkey: Tìm NPC theo tên thực tế trong game")
+print("📌 Haki: Tự bật khi script chạy")
+print("📌 Gom quái: Kéo 3 con/lần, giữ dưới đất")
 print("📌 Bấm 'BẬT AUTO FARM' để bắt đầu")
 print("=" .. string.rep("=", 50)) 
