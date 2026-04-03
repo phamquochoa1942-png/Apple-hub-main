@@ -266,18 +266,31 @@ function GetCurrentSea(level)
     else return 1 end
 end
 
--- ==================== IsQuestAccepted ====================
+-- ==================== IsQuestAccepted (THEO UI THỰC TẾ TỪ ẢNH) ====================
 function IsQuestAccepted()
-    pcall(function()
+    local success, result = pcall(function()
         local main = playerGui:FindFirstChild("Main")
-        if main then
-            local quest = main:FindFirstChild("Quest")
-            if quest and quest.Visible then
-                return true
+        if not main then return false end
+        
+        -- Duyệt tất cả Frame con của Main
+        for _, frame in pairs(main:GetChildren()) do
+            if frame:IsA("Frame") and frame.Visible then
+                -- Duyệt tất cả TextLabel trong frame
+                for _, text in pairs(frame:GetDescendants()) do
+                    if text:IsA("TextLabel") and text.Visible then
+                        local content = text.Text or ""
+                        -- Kiểm tra có chữ "Nhiệm vụ" hoặc "Thưởng" hoặc "Exp"
+                        if content:find("Nhiệm vụ") or content:find("Thưởng") or content:find("Exp") then
+                            print("✅ Đã tìm thấy quest UI:", content:sub(1, 30))
+                            return true
+                        end
+                    end
+                end
             end
         end
+        return false
     end)
-    return false
+    return success and result or false
 end
 
 function GetNearestMob(mobName)
@@ -336,7 +349,6 @@ function RunStateMachine()
         -- Kiểm tra nếu đã ở gần NPC thì bắt đầu nhận Quest
         local distToNPC = (HRP.Position - (_G.CurrentQuest.NPCPos + Vector3.new(0, 10, 0))).Magnitude
         if distToNPC < 25 then
-            -- QUAN TRỌNG: Lệnh gọi Server để nhận nhiệm vụ
             pcall(function()
                 for i = 1, 3 do
                     if not IsQuestAccepted() then
@@ -485,7 +497,7 @@ settingGroup:AddSlider({
 UI.ToggleUI()
 print("=" .. string.rep("=", 50))
 print("✅ AUTO FARM ĐÃ SẴN SÀNG!")
+print("📌 IsQuestAccepted: Dựa trên UI thực tế (Nhiệm vụ, Thưởng, Exp)")
 print("📌 State Machine: CHECK_QUEST → GET_QUEST → MOVING_TO_FARM → FARMING")
-print("📌 GET_QUEST có timeout 10s và kiểm tra khoảng cách NPC")
 print("📌 Bấm 'BẬT AUTO FARM' để bắt đầu")
-print("=" .. string.rep("=", 50))
+print("=" .. string.rep("=", 50)) 
