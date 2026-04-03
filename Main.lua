@@ -16,7 +16,7 @@ _G.BringMob = false
 _G.TweenSpeed = 300
 _G.AttackDelay = 0.2
 _G.QuestMethod = "Remote"
-_G.Busy = false  -- Khóa vòng lặp khi đang nhận quest
+_G.Busy = false
 
 -- ==================== SERVICE ====================
 local Players = game:GetService("Players")
@@ -25,23 +25,40 @@ local VirtualInputManager = game:GetService("VirtualInputManager")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Player = Players.LocalPlayer
 
--- ==================== QUEST ID MAP (CẬP NHẬT) ====================
-local QuestID_Map = {
-    -- Đảo Khỉ
-    ["Monkey"] = 1,
-    ["Gorilla"] = 2,
-    -- Đảo Tuyết
-    ["SnowBandit"] = 1,
-    ["Snowman"] = 2,
-    ["SnowTrooper"] = 1,
-    -- Các NPC khác (mặc định thử 1-3)
-}
+-- ==================== LOGIC BAY (TỪ CODE CŨ CỦA BẠN) ====================
+local currentTween = nil
 
-function GetQuestID(npcName)
-    local id = QuestID_Map[npcName]
-    if id then return id end
-    -- Nếu không có ID, mặc định thử từ 1 đến 3
-    return {1, 2, 3}
+function StopTween()
+    if currentTween then
+        pcall(function() currentTween:Cancel() end)
+        currentTween = nil
+    end
+end
+
+function TweenToPosition(Position)
+    if not _G.AutoFarm then return false end
+    if _G.Busy then return false end
+    StopTween()
+    
+    local success = pcall(function()
+        local char = Player.Character
+        if not char then return end
+        local hrp = char:FindFirstChild("HumanoidRootPart")
+        if not hrp then return end
+        
+        local distance = (hrp.Position - Position).Magnitude
+        if distance < 10 then return end
+        
+        local tweenInfo = TweenInfo.new(
+            math.clamp(distance / _G.TweenSpeed, 0.5, 10),
+            Enum.EasingStyle.Linear
+        )
+        currentTween = TweenService:Create(hrp, tweenInfo, {CFrame = CFrame.new(Position)})
+        currentTween:Play()
+        currentTween.Completed:Wait()
+        currentTween = nil
+    end)
+    return success
 end
 
 -- ==================== MỐC LEVEL 1-2600 ====================
@@ -119,99 +136,6 @@ function GetQuestByLevel(level)
     return QuestLevels[1]
 end
 
--- ==================== KIỂM TRA QUEST ====================
-local function IsQuestAccepted()
-    pcall(function()
-        local playerGui = Player:FindFirstChild("PlayerGui")
-        if playerGui and playerGui:FindFirstChild("Main") then
-            local quest = playerGui.Main:FindFirstChild("Quest")
-            if quest and quest.Visible then
-                return true
-            end
-        end
-    end)
-    return false
-end
-
--- ==================== NHẬN QUEST (THỬ ID 1-3) ====================
-local function AcceptQuest(questData)
-    if not questData then return false end
-    
-    local ids = GetQuestID(questData.npc)
-    if type(ids) == "number" then ids = {ids} end
-    
-    for _, questID in ipairs(ids) do
-        pcall(function()
-            if _G.QuestMethod == "Remote" then
-                local remote = ReplicatedStorage:FindFirstChild("Remotes")
-                if remote then
-                    local commF = remote:FindFirstChild("CommF_")
-                    if commF then
-                        local result = commF:InvokeServer("StartQuest", questData.npc, questID)
-                        if result == 0 then
-                            print("✅ NHẬN QUEST THÀNH CÔNG: " .. questData.npc .. " (ID=" .. questID .. ")")
-                            return true
-                        end
-                    end
-                end
-            else
-                local playerGui = Player:FindFirstChild("PlayerGui")
-                if playerGui and playerGui:FindFirstChild("Main") then
-                    local quest = playerGui.Main:FindFirstChild("Quest")
-                    if quest then
-                        local acceptBtn = quest:FindFirstChild("AcceptButton")
-                        if acceptBtn then
-                            acceptBtn:Fire()
-                            print("✅ NHẬN QUEST THÀNH CÔNG (Click): " .. questData.npc)
-                            return true
-                        end
-                    end
-                end
-            end
-        end)
-        task.wait(0.3)
-    end
-    return false
-end
-
--- ==================== LOGIC BAY (BAY CAO HƠN 12 STUDS) ====================
-local currentTween = nil
-
-function StopTween()
-    if currentTween then
-        pcall(function() currentTween:Cancel() end)
-        currentTween = nil
-    end
-end
-
-function TweenToPosition(Position)
-    if not _G.AutoFarm then return end
-    if _G.Busy then return end -- Không bay khi đang bận
-    
-    StopTween()
-    
-    pcall(function()
-        local char = Player.Character
-        if not char then return end
-        local hrp = char:FindFirstChild("HumanoidRootPart")
-        if not hrp then return end
-        
-        -- BAY CAO HƠN 12 STUDS ĐỂ TRÁNH KẸT
-        local adjustedPos = Vector3.new(Position.X, Position.Y + 12, Position.Z)
-        local distance = (hrp.Position - adjustedPos).Magnitude
-        if distance < 10 then return end
-        
-        local tweenInfo = TweenInfo.new(
-            math.clamp(distance / _G.TweenSpeed, 0.5, 10),
-            Enum.EasingStyle.Linear
-        )
-        currentTween = TweenService:Create(hrp, tweenInfo, {CFrame = CFrame.new(adjustedPos)})
-        currentTween:Play()
-        currentTween.Completed:Wait()
-        currentTween = nil
-    end)
-end
-
 -- ==================== NOCLIP ====================
 task.spawn(function()
     while true do
@@ -248,6 +172,55 @@ task.spawn(function()
         end
     end
 end)
+
+-- ==================== KIỂM TRA QUEST ====================
+local function IsQuestAccepted()
+    pcall(function()
+        local playerGui = Player:FindFirstChild("PlayerGui")
+        if playerGui and playerGui:FindFirstChild("Main") then
+            local quest = playerGui.Main:FindFirstChild("Quest")
+            if quest and quest.Visible then
+                return true
+            end
+        end
+    end)
+    return false
+end
+
+-- ==================== NHẬN QUEST ====================
+local function AcceptQuest(questData)
+    if not questData then return false end
+    
+    pcall(function()
+        if _G.QuestMethod == "Remote" then
+            local remote = ReplicatedStorage:FindFirstChild("Remotes")
+            if remote then
+                local commF = remote:FindFirstChild("CommF_")
+                if commF then
+                    local result = commF:InvokeServer("StartQuest", questData.npc)
+                    if result == 0 then
+                        print("✅ NHẬN QUEST THÀNH CÔNG: " .. questData.npc)
+                        return true
+                    end
+                end
+            end
+        else
+            local playerGui = Player:FindFirstChild("PlayerGui")
+            if playerGui and playerGui:FindFirstChild("Main") then
+                local quest = playerGui.Main:FindFirstChild("Quest")
+                if quest then
+                    local acceptBtn = quest:FindFirstChild("AcceptButton")
+                    if acceptBtn then
+                        acceptBtn:Fire()
+                        print("✅ NHẬN QUEST THÀNH CÔNG (Click): " .. questData.npc)
+                        return true
+                    end
+                end
+            end
+        end
+    end)
+    return false
+end
 
 -- ==================== BRING MOB ====================
 task.spawn(function()
@@ -293,7 +266,7 @@ task.spawn(function()
     end
 end)
 
--- ==================== MAIN LOOP FARM (SỬA LỖI TWEEN LOOP) ====================
+-- ==================== MAIN LOOP FARM ====================
 task.spawn(function()
     while true do
         task.wait(0.5)
@@ -303,24 +276,23 @@ task.spawn(function()
                 local questData = GetQuestByLevel(playerLevel)
                 
                 if not IsQuestAccepted() then
-                    _G.Busy = true -- Khóa vòng lặp
-                    warn("🚀 Đang đi nhận nhiệm vụ...")
+                    _G.Busy = true
+                    print("🚀 Đang đi nhận nhiệm vụ...")
                     
                     TweenToPosition(questData.location)
-                    task.wait(0.5)
+                    task.wait(0.8)
                     
                     local success = AcceptQuest(questData)
                     
                     if success then
-                        warn("✅ Xong! Chờ 1.5s để Server cập nhật...")
-                        task.wait(1.5) -- Đợi Server cập nhật Quest
-                        warn("✅ Bay đi farm thôi!")
+                        print("✅ Xong! Chờ 1.5s để Server cập nhật...")
+                        task.wait(1.5)
+                        print("✅ Bay đi farm thôi!")
                         TweenToPosition(questData.mobArea)
                     end
                     
-                    _G.Busy = false -- Mở khóa
+                    _G.Busy = false
                 else
-                    -- Nếu đã có Quest thì cứ thế mà bay ra bãi farm
                     TweenToPosition(questData.mobArea)
                 end
             end)
@@ -396,9 +368,9 @@ settingGroup:AddDropdown({
 -- ==================== HIỂN THỊ UI ====================
 UI.ToggleUI()
 print("=" .. string.rep("=", 40))
-print("✅ Apple Hub Premium - ĐÃ SỬA LỖI TWEEN LOOP!")
-print("📌 Thêm biến _G.Busy để khóa vòng lặp khi nhận quest")
-print("📌 Bay cao hơn 12 studs để tránh kẹt")
-print("📌 Đợi 1.5s sau khi nhận quest để Server cập nhật")
-print("📌 QuestID_Map: Monkey=1, Gorilla=2, SnowBandit=1, Snowman=2")
-print("=" .. string.rep("=", 40))
+print("✅ Apple Hub Premium - KẾT HỢP HOÀN CHỈNH!")
+print("📌 Logic bay: Từ code cũ của bạn (TweenService)")
+print("📌 Logic auto quest: Từ code mới (InvokeServer + Click)")
+print("📌 Có biến _G.Busy chống loop")
+print("📌 Có noclip + anti-fall + bring mob + auto attack")
+print("=" .. string.rep("=", 40)) 
