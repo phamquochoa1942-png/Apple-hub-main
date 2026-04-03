@@ -15,7 +15,6 @@ _G.AutoFarm = false
 _G.BringMob = false
 _G.TweenSpeed = 300
 _G.AttackDelay = 0.2
-_G.Busy = false
 _G.State = "IDLE"
 _G.CurrentQuest = nil
 
@@ -63,9 +62,12 @@ function ToggleNoclip(enable)
     end
 end
 
--- ==================== LOGIC BAY (FIX HOÀN CHỈNH) ====================
+-- ==================== PREMIUM TWEEN LOCK SYSTEM ====================
 local currentTween = nil
 local isTweening = false
+local tweenLock = false
+local DISTANCE_THRESHOLD = 15
+local FARM_DISTANCE_THRESHOLD = 10
 
 function StopTween()
     if currentTween then
@@ -75,43 +77,50 @@ function StopTween()
         end)
         currentTween = nil
     end
-    -- KHÔNG reset isTweening ở đây
+    isTweening = false
+    tweenLock = false
 end
 
 function TweenToPosition(targetPos)
-    if not _G.AutoFarm then return nil end
-    if isTweening then return nil end
+    if tweenLock or isTweening then
+        print("🔒 TWEEN LOCKED - ĐANG DI CHUYỂN")
+        return nil
+    end
     
     StopTween()
     
-    local character = Player.Character
-    if not character then return nil end
-    
-    local hrp = character:FindFirstChild("HumanoidRootPart")
-    if not hrp then return nil end
-    
-    -- Bật noclip khi bay
-    ToggleNoclip(true)
-    
-    local distance = (hrp.Position - targetPos).Magnitude
-    if distance < 10 then
-        ToggleNoclip(false)
+    local char = Player.Character
+    if not char or not char:FindFirstChild("HumanoidRootPart") then
         return nil
     end
+    
+    local hrp = char.HumanoidRootPart
+    local distance = (hrp.Position - targetPos).Magnitude
+    
+    if distance < DISTANCE_THRESHOLD then
+        print("✅ ĐÃ GẦN MỤC TIÊU (" .. math.floor(distance) .. " studs)")
+        isTweening = false
+        tweenLock = false
+        return nil
+    end
+    
+    ToggleNoclip(true)
     
     local tweenTime = math.max(1.5, distance / _G.TweenSpeed)
     local tweenInfo = TweenInfo.new(tweenTime, Enum.EasingStyle.Linear)
     
-    currentTween = TweenService:Create(hrp, tweenInfo, {CFrame = CFrame.new(targetPos)})
     isTweening = true
+    tweenLock = true
     
+    currentTween = TweenService:Create(hrp, tweenInfo, {CFrame = CFrame.new(targetPos)})
     currentTween:Play()
     
-    -- Tự động reset khi hoàn thành
     currentTween.Completed:Connect(function()
-        isTweening = false
+        local finalDistance = (hrp.Position - targetPos).Magnitude
         ToggleNoclip(false)
-        currentTween = nil
+        isTweening = false
+        tweenLock = false
+        print("✅ TWEEN HOÀN THÀNH (" .. math.floor(finalDistance) .. " studs)")
     end)
     
     return currentTween
@@ -176,7 +185,7 @@ end)
 
 -- ==================== QUEST DATABASE ====================
 local QuestDB = {
-    [1] = { -- SEA 1 (Lv 1-700)
+    [1] = {
         {LvMin=0, LvMax=14, QuestName="BanditQuest1", NPCPos=Vector3.new(1061,16,1548), MobName="Bandit", MobArea=Vector3.new(1100,13,1480)},
         {LvMin=15, LvMax=29, QuestName="JungleQuest", NPCPos=Vector3.new(-1400,37,90), MobName="Monkey", MobArea=Vector3.new(-1200,68,320)},
         {LvMin=30, LvMax=59, QuestName="JungleQuest", NPCPos=Vector3.new(-1250,37,1600), MobName="Gorilla", MobArea=Vector3.new(-1280,37,1580)},
@@ -189,7 +198,7 @@ local QuestDB = {
         {LvMin=550, LvMax=699, QuestName="ViceQuest", NPCPos=Vector3.new(-4716,9,2993), MobName="Vice Admiral", MobArea=Vector3.new(-4740,9,2970)},
         {LvMin=700, LvMax=700, QuestName="SaberExpertQuest", NPCPos=Vector3.new(923,65,14280), MobName="Saber Expert", MobArea=Vector3.new(900,65,14250)},
     },
-    [2] = { -- SEA 2 (Lv 700-1500)
+    [2] = {
         {LvMin=700, LvMax=799, QuestName="BartiloQuest", NPCPos=Vector3.new(-1859,13,1729), MobName="Pirate Millionaire", MobArea=Vector3.new(-1820,13,1750)},
         {LvMin=800, LvMax=874, QuestName="CaptainEleQuest", NPCPos=Vector3.new(-1370,30,92), MobName="Captain Elephant", MobArea=Vector3.new(-1400,30,120)},
         {LvMin=875, LvMax=899, QuestName="BeautifulPirateQuest", NPCPos=Vector3.new(5815,18,-2726), MobName="Beautiful Pirate", MobArea=Vector3.new(5790,18,-2750)},
@@ -209,7 +218,7 @@ local QuestDB = {
         {LvMin=1475, LvMax=1499, QuestName="IslandEmperorQuest", NPCPos=Vector3.new(5400,605,918), MobName="Island Emperor", MobArea=Vector3.new(5370,605,890)},
         {LvMin=1500, LvMax=1500, QuestName="TideKeeperQuest", NPCPos=Vector3.new(3879,38,-3346), MobName="Tide Keeper", MobArea=Vector3.new(3850,38,-3370)},
     },
-    [3] = { -- SEA 3 (Lv 1500-2600)
+    [3] = {
         {LvMin=1501, LvMax=1574, QuestName="MansionQuest1", NPCPos=Vector3.new(-12463,332,8792), MobName="Reborn Skeleton", MobArea=Vector3.new(-12490,332,8770)},
         {LvMin=1575, LvMax=1624, QuestName="MansionQuest2", NPCPos=Vector3.new(-12463,332,8792), MobName="Reborn Sniper", MobArea=Vector3.new(-12490,332,8770)},
         {LvMin=1625, LvMax=1674, QuestName="PreInstructorQuest", NPCPos=Vector3.new(-425,216,1837), MobName="Fajita", MobArea=Vector3.new(-450,216,1810)},
@@ -252,6 +261,13 @@ function IsQuestAccepted()
     return false
 end
 
+function GetSafeMobArea(npcPos)
+    if not _G.CurrentQuest.MobArea or (_G.CurrentQuest.MobArea - npcPos).Magnitude < 50 then
+        return npcPos + Vector3.new(math.random(100, 200), 50, math.random(100, 200))
+    end
+    return _G.CurrentQuest.MobArea
+end
+
 function GetNearestMob(mobName)
     local closest, closestDist = nil, math.huge
     local enemies = workspace:FindFirstChild("Enemies")
@@ -272,36 +288,19 @@ function GetNearestMob(mobName)
     return closest
 end
 
--- ==================== HÀM HỖ TRỢ DI CHUYỂN CHÍNH XÁC ====================
-function FlyToPosition(targetPos, timeoutSec)
-    timeoutSec = timeoutSec or 8
-    local startTime = tick()
-    
-    -- Tạo BodyVelocity để di chuyển chính xác
-    local bodyVelocity = Instance.new("BodyVelocity")
-    bodyVelocity.MaxForce = Vector3.new(4000, 4000, 4000)
-    bodyVelocity.Velocity = Vector3.new(0, 0, 0)
-    bodyVelocity.Parent = HRP
-    
-    ToggleNoclip(true)
-    
-    repeat
-        local direction = (targetPos - HRP.Position).Unit
-        bodyVelocity.Velocity = direction * 16
-        task.wait(0.05)
-    until (HRP.Position - targetPos).Magnitude < 6 or tick() - startTime > timeoutSec
-    
-    bodyVelocity:Destroy()
-    ToggleNoclip(false)
-    
-    return (HRP.Position - targetPos).Magnitude < 6
-end
-
--- ==================== STATE MACHINE ====================
+-- ==================== STATE MACHINE (PREMIUM) ====================
 function RunStateMachine()
-    if not _G.AutoFarm or isTweening then return end
+    local char = Player.Character
+    if not char or not char:FindFirstChild("HumanoidRootPart") then
+        return
+    end
     
-    print("🐛 STATE:", _G.State)
+    local hrp = char.HumanoidRootPart
+    
+    if _G.State == "MOVING_TO_FARM" and (isTweening or tweenLock) then
+        print("🔒 MOVING_TO_FARM LOCKED - ĐANG BAY")
+        return
+    end
     
     if _G.State == "IDLE" or _G.State == "CHECK_QUEST" then
         local level = Player.Data.Level.Value or 1
@@ -322,50 +321,32 @@ function RunStateMachine()
         end
         
     elseif _G.State == "GET_QUEST" then
-        print("✈️ FLY TO NPC:", _G.CurrentQuest.QuestName)
-        
-        -- Bay đến NPC (cách mặt đất 12 studs)
+        print("✈️ FLY TO NPC")
         local npcTween = TweenToPosition(_G.CurrentQuest.NPCPos + Vector3.new(0, 12, 0))
+        
         if npcTween then
             npcTween.Completed:Wait()
         end
         
-        -- Di chuyển chính xác đến vị trí NPC
-        local success = FlyToPosition(_G.CurrentQuest.NPCPos + Vector3.new(0, 3, 0), 8)
+        -- Nhận quest
+        for i = 1, 3 do
+            pcall(function()
+                local result = ReplicatedStorage.Remotes.CommF_:InvokeServer("StartQuest", _G.CurrentQuest.QuestName, i)
+                print("📡 Quest ID", i, "result:", result)
+            end)
+            task.wait(0.5)
+        end
+        task.wait(1)
         
-        if success then
-            print("✅ ĐÃ ĐẾN NPC")
-            task.wait(1)
-            
-            -- Nhận quest
-            for i = 1, 3 do
-                pcall(function()
-                    local result = ReplicatedStorage.Remotes.CommF_:InvokeServer("StartQuest", _G.CurrentQuest.QuestName, i)
-                    print("📡 Quest ID", i, "result:", result)
-                end)
-                task.wait(0.5)
-            end
-            task.wait(1)
-            
-            if IsQuestAccepted() then
-                print("✅ NHẬN QUEST THÀNH CÔNG")
-                _G.State = "MOVING_TO_FARM"
-            else
-                print("❌ NHẬN QUEST THẤT BẠI, THỬ LẠI")
-            end
-        else
-            print("❌ KHÔNG THỂ ĐẾN NPC")
+        if IsQuestAccepted() then
+            print("✅ NHẬN QUEST THÀNH CÔNG")
+            _G.State = "MOVING_TO_FARM"
         end
         
     elseif _G.State == "MOVING_TO_FARM" then
-        print("🚶 MOVING_TO_FARM")
-        local farmPos = _G.CurrentQuest.MobArea or (_G.CurrentQuest.NPCPos + Vector3.new(math.random(-60,60), 15, math.random(-60,60)))
-        
-        local tween = TweenToPosition(farmPos)
-        if tween then
-            tween.Completed:Wait()
-        end
-        
+        print("🌾 FLY TO FARM AREA")
+        local mobArea = GetSafeMobArea(_G.CurrentQuest.NPCPos)
+        TweenToPosition(mobArea)
         _G.State = "FARMING"
         
     elseif _G.State == "FARMING" then
@@ -377,7 +358,12 @@ function RunStateMachine()
         
         local mob = GetNearestMob(_G.CurrentQuest.MobName)
         if mob then
-            TweenToPosition(mob.HumanoidRootPart.Position + Vector3.new(0, 5, 0))
+            local mobPos = mob.HumanoidRootPart.Position
+            local distanceToMob = (HRP.Position - mobPos).Magnitude
+            
+            if distanceToMob > FARM_DISTANCE_THRESHOLD then
+                TweenToPosition(mobPos + Vector3.new(0, 5, 0))
+            end
         end
     end
 end
@@ -385,7 +371,7 @@ end
 -- ==================== MAIN LOOP ====================
 task.spawn(function()
     while true do
-        task.wait(1.5)
+        task.wait(0.1)
         if _G.AutoFarm then
             pcall(RunStateMachine)
         end
@@ -408,6 +394,7 @@ Player.CharacterAdded:Connect(function()
     UpdateHRP()
     _G.State = "CHECK_QUEST"
     isTweening = false
+    tweenLock = false
 end)
 
 -- ==================== UI ====================
@@ -470,7 +457,8 @@ settingGroup:AddSlider({
 
 UI.ToggleUI()
 print("=" .. string.rep("=", 50))
-print("✅ FIX HOÀN CHỈNH! Bay sẽ không bị đáp xuống nữa")
-print("📌 Thêm FlyToPosition với BodyVelocity để di chuyển chính xác")
+print("✅ PREMIUM STATE MACHINE - ĐÃ FIX HOÀN CHỈNH!")
+print("📌 Tween Lock System: KHÔNG cho phép tween chồng chéo")
+print("📌 MOVING_TO_FARM: KHÔNG chạy logic khác khi đang bay")
 print("📌 Bấm 'BẬT AUTO FARM' để bắt đầu")
 print("=" .. string.rep("=", 50)) 
