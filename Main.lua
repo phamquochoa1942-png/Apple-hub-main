@@ -1,4 +1,4 @@
--- Gọi UI Library
+-- Gọi UI Library (CỦA BẠN)
 local UI = loadstring(game:HttpGet("https://raw.githubusercontent.com/phamquochoa1942-png/Newuiapplehub/refs/heads/main/New%20apple%20hub"))()
 
 local window = UI:CreateWindow({
@@ -9,18 +9,16 @@ local window = UI:CreateWindow({
 
 local farmTab = window:AddTab("🌾 Farm")
 local settingTab = window:AddTab("⚙️ Settings")
-local hakiTab = window:AddTab("🌑 Haki")
 
 -- ==================== BIẾN CẤU HÌNH ====================
 _G.AutoFarm = false
 _G.BringMob = true
 _G.TweenSpeed = 300
 _G.AttackDelay = 0.04
-_G.FarmState = "IDLE"
-_G.CurrentQuest = nil
-_G.GatheredMobs = {}
 _G.FlyHeight = 12
 _G.BigHitbox = true
+_G.CurrentQuest = nil
+_G.GatheredMobs = {}
 
 -- ==================== SERVICE ====================
 local Players = game:GetService("Players")
@@ -94,67 +92,63 @@ task.spawn(function()
     end
 end)
 
--- ==================== PERFECT QUEST DATA (Lv1-2824) ====================
+-- ==================== QUEST DATABASE ====================
 local QuestData = {
-    -- SEA 1 (Detailed Monkey vs Gorilla)
-    {1,9,"BanditQuest1","Bandit NPC","Bandit",CFrame.new(1061,17,1549),CFrame.new(1100,13,1480)},
-    {10,14,"BanditQuest2","Bandit NPC","Bandit",CFrame.new(1061,17,1549),CFrame.new(1100,13,1480)},
-    {15,29,"JungleQuest","Jungle NPC 1","Monkey",CFrame.new(-1400,37,90),CFrame.new(-1200,68,320)},
-    {30,59,"JungleQuest","Jungle NPC 2","Gorilla",CFrame.new(-1250,37,1600),CFrame.new(-1280,37,1580)},
-    {60,89,"SnowQuest","Snow NPC","Snow Bandit",CFrame.new(1386,87,-1297),CFrame.new(1350,87,-1320)},
-    {90,124,"SnowQuest","Snow NPC","Snowman",CFrame.new(1386,87,-1297),CFrame.new(1350,87,-1320)},
-    {125,149,"MarineQuest1","Marine Captain","Marine Captain",CFrame.new(611,73,552),CFrame.new(580,73,520)},
-    {150,174,"MarineQuest2","Marine Lieutenant","Marine Lieutenant",CFrame.new(611,73,552),CFrame.new(580,73,520)},
-    {175,224,"SkyQuest1","Sky Bandit NPC","Sky Bandit",CFrame.new(-4842,717,-2623),CFrame.new(-4870,717,-2650)},
-    {225,299,"SkyQuest2","Sky Warrior NPC","Skypiea Warrior",CFrame.new(-4842,717,-2623),CFrame.new(-4870,717,-2650)},
-    {300,374,"BridgeQuest1","Bridge Scientist","Mad Scientist",CFrame.new(-1606,36,181),CFrame.new(-1630,36,150)},
-    {375,399,"BridgeQuest2","Bridge Pirate","Forest Pirate",CFrame.new(-1606,36,181),CFrame.new(-1630,36,150)},
-    {400,449,"ColosseumQuest","Colosseum Soldier","Military Soldier",CFrame.new(-1576,7,158),CFrame.new(-1600,7,130)},
-    {450,499,"ColosseumQuest","Colosseum Spy","Military Spy",CFrame.new(-1576,7,158),CFrame.new(-1600,7,130)},
-    {500,549,"SkyQuest3","Dark Master NPC","Dark Master",CFrame.new(-4842,717,-2623),CFrame.new(-4870,717,-2650)},
-    {550,624,"FrozenQuest","Frost Pirate NPC","Frost Pirate",CFrame.new(5668,28,853),CFrame.new(5640,28,820)},
-    {625,699,"FrozenQuest","Snow Lurker NPC","Snow Lurker",CFrame.new(5668,28,853),CFrame.new(5640,28,820)},
-    -- SEA 2
-    {700,774,"GreenbanditQuest","Green Bandit Quest","Green Bandit",CFrame.new(-2553,6,4533),CFrame.new(-2520,6,4560)},
-    {775,849,"GreenbanditQuest","Forest Warrior Quest","Forest Warrior",CFrame.new(-2553,6,4533),CFrame.new(-2520,6,4560)},
-    {850,924,"MarineCaptainQuest","Marine Captain Lv850","Marine Captain [Lv. 850]",CFrame.new(6094,95,5907),CFrame.new(6060,95,5930)},
-    {925,999,"MarineCaptainQuest","Marine Commodore Lv950","Marine Commodore [Lv. 950]",CFrame.new(6094,95,5907),CFrame.new(6060,95,5930)},
-    {1000,1074,"MagmaQuest1","Military Soldier Lv1000","Military Soldier [Lv. 1000]",CFrame.new(3876,35,-3427),CFrame.new(3840,35,-3450)},
-    {1075,1149,"MagmaQuest1","Military Spy Lv1075","Military Spy [Lv. 1075]",CFrame.new(3876,35,-3427),CFrame.new(3840,35,-3450)},
-    {1150,1199,"MagmaQuest2","Lava Pirate Lv1150","Lava Pirate [Lv. 1150]",CFrame.new(3876,35,-3427),CFrame.new(3840,35,-3450)},
-    {1200,1249,"MagmaQuest2","Mythological Pirate Lv1200","Mythological Pirate [Lv. 1200]",CFrame.new(3876,35,-3427),CFrame.new(3840,35,-3450)},
-    {1250,1349,"FishmanQuest","Fishman Warrior Lv1250","Fishman Warrior [Lv. 1250]",CFrame.new(61163,19,10608),CFrame.new(61130,19,10640)},
-    {1350,1449,"FishmanQuest","Fishman Commando Lv1350","Fishman Commando [Lv. 1350]",CFrame.new(61163,19,10608),CFrame.new(61130,19,10640)},
-    {1450,1549,"SkyExp1Quest","Sky Expedition Lv1450","Sky Expedition [Lv. 1450]",CFrame.new(-7862,5566,-380),CFrame.new(-7890,5566,-410)},
-    -- SEA 3 (Max 2824)
-    {1500,1549,"SkyExp1Quest","Sky Expedition Lv1500","Sky Expedition [Lv. 1500]",CFrame.new(-7862,5566,-380),CFrame.new(-7890,5566,-410)},
-    {1550,1599,"SkyExp2Quest","God Quest Lv1550","God [Lv. 1550]",CFrame.new(-7862,5566,-380),CFrame.new(-7890,5566,-410)},
-    {1600,1624,"CastleQuest1","Captain Elephant Quest","Captain Elephant",CFrame.new(-5075,314,8400),CFrame.new(-5100,314,8370)},
-    {1625,1674,"CastleQuest1","Guardian Robot Quest","Guardian Robot",CFrame.new(-5075,314,8400),CFrame.new(-5100,314,8370)},
-    {1675,1724,"CastleQuest2","Kithmus Quest","Kithmus",CFrame.new(-5075,314,8400),CFrame.new(-5100,314,8370)},
-    {1725,1774,"CastleQuest2","Toga Warrior Quest","Toga Warrior",CFrame.new(-5075,314,8400),CFrame.new(-5100,314,8370)},
-    {1775,1824,"MarineQuest3","Marine Commodore Lv1800","Marine Commodore [Lv. 1800]",CFrame.new(5232,61,855),CFrame.new(5200,61,820)},
-    {1825,1874,"MarineQuest3","Marine Rear Admiral Lv1825","Marine Rear Admiral [Lv. 1825]",CFrame.new(5232,61,855),CFrame.new(5200,61,820)},
-    {1875,1924,"SnowMountainQuest","Snow Mountain Quest","Snow Mountain",CFrame.new(619,74,1468),CFrame.new(590,74,1440)},
-    {1925,1974,"SnowMountainQuest","Snow Mountain Lv1925","Snow Mountain [Lv. 1925]",CFrame.new(619,74,1468),CFrame.new(590,74,1440)},
-    {1975,2024,"IceFireQuest","Ice Fire Quest","Ice Fire",CFrame.new(5433,89,1350),CFrame.new(5400,89,1320)},
-    {2025,2074,"IceFireQuest","Ice Fire Lv2025","Ice Fire [Lv. 2025]",CFrame.new(5433,89,1350),CFrame.new(5400,89,1320)},
-    {2075,2124,"PortableFortressQuest","Portable Fortress Quest","Portable Fortress",CFrame.new(-490,54,4332),CFrame.new(-520,54,4300)},
-    {2125,2174,"PortableFortressQuest","Portable Fortress Lv2125","Portable Fortress [Lv. 2125]",CFrame.new(-490,54,4332),CFrame.new(-520,54,4300)},
-    {2175,2224,"PortTownQuest","Port Town Quest","Port Town",CFrame.new(-290,44,5447),CFrame.new(-320,44,5420)},
-    {2225,2274,"PortTownQuest","Port Town Lv2225","Port Town [Lv. 2225]",CFrame.new(-290,44,5447),CFrame.new(-320,44,5420)},
-    {2275,2324,"HydraIslandQuest","Hydra Island Quest","Hydra Island",CFrame.new(5735,62,-4430),CFrame.new(5700,62,-4460)},
-    {2325,2374,"HydraIslandQuest","Hydra Island Lv2325","Hydra Island [Lv. 2325]",CFrame.new(5735,62,-4430),CFrame.new(5700,62,-4460)},
-    {2375,2424,"GreatTreeQuest","Great Tree Quest","Great Tree",CFrame.new(2682,4340,-3318),CFrame.new(2650,4340,-3350)},
-    {2425,2474,"GreatTreeQuest","Great Tree Lv2425","Great Tree [Lv. 2425]",CFrame.new(2682,4340,-3318),CFrame.new(2650,4340,-3350)},
-    {2475,2524,"CastleOnSeaQuest","Castle on Sea Quest","Castle on Sea",CFrame.new(5192,56,3405),CFrame.new(5160,56,3370)},
-    {2525,2574,"CastleOnSeaQuest","Castle on Sea Lv2525","Castle on Sea [Lv. 2525]",CFrame.new(5192,56,3405),CFrame.new(5160,56,3370)},
-    {2575,2624,"SeaOfTreatsQuest","Sea of Treats Quest","Sea of Treats",CFrame.new(-1800,10,50),CFrame.new(-1830,10,20)},
-    {2625,2674,"SeaOfTreatsQuest","Sea of Treats Lv2625","Sea of Treats [Lv. 2625]",CFrame.new(-1800,10,50),CFrame.new(-1830,10,20)},
-    {2675,2724,"TikiOutpostQuest","Tiki Outpost Quest","Tiki Outpost",CFrame.new(-1600,70,200),CFrame.new(-1630,70,170)},
-    {2725,2774,"TikiOutpostQuest","Tiki Outpost Lv2725","Tiki Outpost [Lv. 2725]",CFrame.new(-1600,70,200),CFrame.new(-1630,70,170)},
-    {2775,2824,"BartiloQuest","Bartilo Quest","Bartilo",CFrame.new(-1850,40,150),CFrame.new(-1880,40,120)},
-    {2825,2874,"BartiloQuest","Bartilo Quest","Bartilo [Lv. 2825]",CFrame.new(-1850,40,150),CFrame.new(-1880,40,120)}
+    {1,9,"BanditQuest1","Bandit",CFrame.new(1061,17,1549),CFrame.new(1100,13,1480)},
+    {10,14,"BanditQuest2","Bandit",CFrame.new(1061,17,1549),CFrame.new(1100,13,1480)},
+    {15,29,"JungleQuest","Monkey",CFrame.new(-1400,37,90),CFrame.new(-1200,68,320)},
+    {30,59,"JungleQuest","Gorilla",CFrame.new(-1250,37,1600),CFrame.new(-1280,37,1580)},
+    {60,89,"SnowQuest","Snow Bandit",CFrame.new(1386,87,-1297),CFrame.new(1350,87,-1320)},
+    {90,124,"SnowQuest","Snowman",CFrame.new(1386,87,-1297),CFrame.new(1350,87,-1320)},
+    {125,149,"MarineQuest1","Marine Captain",CFrame.new(611,73,552),CFrame.new(580,73,520)},
+    {150,174,"MarineQuest2","Marine Lieutenant",CFrame.new(611,73,552),CFrame.new(580,73,520)},
+    {175,224,"SkyQuest1","Sky Bandit",CFrame.new(-4842,717,-2623),CFrame.new(-4870,717,-2650)},
+    {225,299,"SkyQuest2","Skypiea Warrior",CFrame.new(-4842,717,-2623),CFrame.new(-4870,717,-2650)},
+    {300,374,"BridgeQuest1","Mad Scientist",CFrame.new(-1606,36,181),CFrame.new(-1630,36,150)},
+    {375,399,"BridgeQuest2","Forest Pirate",CFrame.new(-1606,36,181),CFrame.new(-1630,36,150)},
+    {400,449,"ColosseumQuest","Military Soldier",CFrame.new(-1576,7,158),CFrame.new(-1600,7,130)},
+    {450,499,"ColosseumQuest","Military Spy",CFrame.new(-1576,7,158),CFrame.new(-1600,7,130)},
+    {500,549,"SkyQuest3","Dark Master",CFrame.new(-4842,717,-2623),CFrame.new(-4870,717,-2650)},
+    {550,624,"FrozenQuest","Frost Pirate",CFrame.new(5668,28,853),CFrame.new(5640,28,820)},
+    {625,699,"FrozenQuest","Snow Lurker",CFrame.new(5668,28,853),CFrame.new(5640,28,820)},
+    {700,774,"GreenbanditQuest","Green Bandit",CFrame.new(-2553,6,4533),CFrame.new(-2520,6,4560)},
+    {775,849,"GreenbanditQuest","Forest Warrior",CFrame.new(-2553,6,4533),CFrame.new(-2520,6,4560)},
+    {850,924,"MarineCaptainQuest","Marine Captain",CFrame.new(6094,95,5907),CFrame.new(6060,95,5930)},
+    {925,999,"MarineCaptainQuest","Marine Commodore",CFrame.new(6094,95,5907),CFrame.new(6060,95,5930)},
+    {1000,1074,"MagmaQuest1","Military Soldier",CFrame.new(3876,35,-3427),CFrame.new(3840,35,-3450)},
+    {1075,1149,"MagmaQuest1","Military Spy",CFrame.new(3876,35,-3427),CFrame.new(3840,35,-3450)},
+    {1150,1199,"MagmaQuest2","Lava Pirate",CFrame.new(3876,35,-3427),CFrame.new(3840,35,-3450)},
+    {1200,1249,"MagmaQuest2","Mythological Pirate",CFrame.new(3876,35,-3427),CFrame.new(3840,35,-3450)},
+    {1250,1349,"FishmanQuest","Fishman Warrior",CFrame.new(61163,19,10608),CFrame.new(61130,19,10640)},
+    {1350,1449,"FishmanQuest","Fishman Commando",CFrame.new(61163,19,10608),CFrame.new(61130,19,10640)},
+    {1450,1549,"SkyExp1Quest","Sky Expedition",CFrame.new(-7862,5566,-380),CFrame.new(-7890,5566,-410)},
+    {1500,1549,"SkyExp1Quest","Sky Expedition",CFrame.new(-7862,5566,-380),CFrame.new(-7890,5566,-410)},
+    {1550,1599,"SkyExp2Quest","God",CFrame.new(-7862,5566,-380),CFrame.new(-7890,5566,-410)},
+    {1600,1624,"CastleQuest1","Captain Elephant",CFrame.new(-5075,314,8400),CFrame.new(-5100,314,8370)},
+    {1625,1674,"CastleQuest1","Guardian Robot",CFrame.new(-5075,314,8400),CFrame.new(-5100,314,8370)},
+    {1675,1724,"CastleQuest2","Kithmus",CFrame.new(-5075,314,8400),CFrame.new(-5100,314,8370)},
+    {1725,1774,"CastleQuest2","Toga Warrior",CFrame.new(-5075,314,8400),CFrame.new(-5100,314,8370)},
+    {1775,1824,"MarineQuest3","Marine Commodore",CFrame.new(5232,61,855),CFrame.new(5200,61,820)},
+    {1825,1874,"MarineQuest3","Marine Rear Admiral",CFrame.new(5232,61,855),CFrame.new(5200,61,820)},
+    {1875,1924,"SnowMountainQuest","Snow Mountain",CFrame.new(619,74,1468),CFrame.new(590,74,1440)},
+    {1925,1974,"SnowMountainQuest","Snow Mountain",CFrame.new(619,74,1468),CFrame.new(590,74,1440)},
+    {1975,2024,"IceFireQuest","Ice Fire",CFrame.new(5433,89,1350),CFrame.new(5400,89,1320)},
+    {2025,2074,"IceFireQuest","Ice Fire",CFrame.new(5433,89,1350),CFrame.new(5400,89,1320)},
+    {2075,2124,"PortableFortressQuest","Portable Fortress",CFrame.new(-490,54,4332),CFrame.new(-520,54,4300)},
+    {2125,2174,"PortableFortressQuest","Portable Fortress",CFrame.new(-490,54,4332),CFrame.new(-520,54,4300)},
+    {2175,2224,"PortTownQuest","Port Town",CFrame.new(-290,44,5447),CFrame.new(-320,44,5420)},
+    {2225,2274,"PortTownQuest","Port Town",CFrame.new(-290,44,5447),CFrame.new(-320,44,5420)},
+    {2275,2324,"HydraIslandQuest","Hydra Island",CFrame.new(5735,62,-4430),CFrame.new(5700,62,-4460)},
+    {2325,2374,"HydraIslandQuest","Hydra Island",CFrame.new(5735,62,-4430),CFrame.new(5700,62,-4460)},
+    {2375,2424,"GreatTreeQuest","Great Tree",CFrame.new(2682,4340,-3318),CFrame.new(2650,4340,-3350)},
+    {2425,2474,"GreatTreeQuest","Great Tree",CFrame.new(2682,4340,-3318),CFrame.new(2650,4340,-3350)},
+    {2475,2524,"CastleOnSeaQuest","Castle on Sea",CFrame.new(5192,56,3405),CFrame.new(5160,56,3370)},
+    {2525,2574,"CastleOnSeaQuest","Castle on Sea",CFrame.new(5192,56,3405),CFrame.new(5160,56,3370)},
+    {2575,2624,"SeaOfTreatsQuest","Sea of Treats",CFrame.new(-1800,10,50),CFrame.new(-1830,10,20)},
+    {2625,2674,"SeaOfTreatsQuest","Sea of Treats",CFrame.new(-1800,10,50),CFrame.new(-1830,10,20)},
+    {2675,2724,"TikiOutpostQuest","Tiki Outpost",CFrame.new(-1600,70,200),CFrame.new(-1630,70,170)},
+    {2725,2774,"TikiOutpostQuest","Tiki Outpost",CFrame.new(-1600,70,200),CFrame.new(-1630,70,170)},
+    {2775,2824,"BartiloQuest","Bartilo",CFrame.new(-1850,40,150),CFrame.new(-1880,40,120)}
 }
 
 -- ==================== TÌM QUEST ====================
@@ -163,7 +157,7 @@ function SelectQuest()
     for _, quest in ipairs(QuestData) do
         if level >= quest[1] and level <= quest[2] then
             _G.CurrentQuest = quest
-            print("🎯 Quest:", quest[3], "→", quest[5])
+            print("🎯 Quest:", quest[3], "→", quest[4])
             return true
         end
     end
@@ -199,7 +193,7 @@ end
 
 -- ==================== FARM ABOVE ====================
 function FarmAbove()
-    if not HRP then return
+    if not HRP then return end
     local farmPos = HRP.Position + Vector3.new(math.random(-20,20), _G.FlyHeight, math.random(-20,20))
     HRP.CFrame = CFrame.new(farmPos)
 end
@@ -216,11 +210,10 @@ function SuperBringMob()
     if not enemies then return end
     
     for _, mob in ipairs(enemies:GetChildren()) do
-        if mob.Name == _G.CurrentQuest[5] and mob:FindFirstChild("HumanoidRootPart") and mob.Humanoid and mob.Humanoid.Health > 0 then
+        if mob.Name == _G.CurrentQuest[4] and mob:FindFirstChild("HumanoidRootPart") and mob.Humanoid and mob.Humanoid.Health > 0 then
             local dist = (playerPos - mob.HumanoidRootPart.Position).Magnitude
             if dist <= 200 then
                 table.insert(_G.GatheredMobs, mob)
-                
                 pcall(function()
                     sethiddenproperty(mob, "SimulationRadius", math.huge)
                     mob.HumanoidRootPart.CFrame = CFrame.new(gatherPoint)
@@ -234,8 +227,8 @@ function SuperBringMob()
     end
 end
 
--- ==================== HAKI FAST ATTACK ====================
-function HakiFastAttack()
+-- ==================== FAST ATTACK ====================
+function FastAttack()
     pcall(function()
         local commF = ReplicatedStorage:FindFirstChild("Remotes")
         if commF and commF:FindFirstChild("CommF_") then
@@ -249,7 +242,7 @@ function HakiFastAttack()
     end)
 end
 
--- ==================== MAIN EXPERT LOOP ====================
+-- ==================== MAIN LOOP ====================
 task.spawn(function()
     while true do
         if _G.AutoFarm then
@@ -258,7 +251,7 @@ task.spawn(function()
                 
                 if SelectQuest() and _G.CurrentQuest then
                     -- Bay đến NPC
-                    FlyTo(_G.CurrentQuest[6].Position)
+                    FlyTo(_G.CurrentQuest[5].Position)
                     task.wait(0.5)
                     
                     -- Nhận quest
@@ -271,7 +264,7 @@ task.spawn(function()
                     -- Kiểm tra quest thành công
                     if IsQuestAccepted() then
                         -- Bay đến khu farm
-                        FlyTo(_G.CurrentQuest[7].Position)
+                        FlyTo(_G.CurrentQuest[6].Position)
                         task.wait(0.5)
                         
                         -- Farm cycle
@@ -279,9 +272,8 @@ task.spawn(function()
                             if not _G.AutoFarm then break end
                             FarmAbove()
                             if _G.BringMob then SuperBringMob() end
-                            HakiFastAttack()
+                            FastAttack()
                             
-                            -- Anti-stuck mỗi 10 lần
                             if i % 10 == 0 and HRP then
                                 HRP.CFrame = HRP.CFrame + HRP.CFrame.LookVector * 5
                             end
@@ -295,7 +287,7 @@ task.spawn(function()
     end
 end)
 
--- ==================== UI ====================
+-- ==================== UI (DÙNG BUTTON CỦA BẠN) ====================
 local farmGroup = farmTab:AddLeftGroupbox("🤖 Điều Khiển")
 
 farmGroup:AddButton({
@@ -315,23 +307,40 @@ farmGroup:AddButton({
     end
 })
 
-farmGroup:AddToggle({
+farmGroup:AddButton({
     Title = "📦 BẬT GOM QUÁI",
-    Default = true,
-    Callback = function(v) _G.BringMob = v end
+    Callback = function()
+        _G.BringMob = true
+        print("✅ Bring Mob BẬT")
+    end
 })
 
-farmGroup:AddToggle({
-    Title = "💥 BIG HITBOX (Đánh rộng hơn)",
-    Default = true,
-    Callback = function(v) _G.BigHitbox = v end
+farmGroup:AddButton({
+    Title = "📦 TẮT GOM QUÁI",
+    Callback = function()
+        _G.BringMob = false
+        print("⏸️ Bring Mob TẮT")
+    end
 })
 
--- Haki Tab
-local hakiGroup = hakiTab:AddLeftGroupbox("🌑 Auto Haki")
+farmGroup:AddButton({
+    Title = "💥 BẬT BIG HITBOX",
+    Callback = function()
+        _G.BigHitbox = true
+        print("✅ Big Hitbox BẬT")
+    end
+})
 
-hakiGroup:AddButton({
-    Title = "🔘 BẬT HAKI NGAY",
+farmGroup:AddButton({
+    Title = "💥 TẮT BIG HITBOX",
+    Callback = function()
+        _G.BigHitbox = false
+        print("⏸️ Big Hitbox TẮT")
+    end
+})
+
+farmGroup:AddButton({
+    Title = "🌑 BẬT HAKI NGAY",
     Callback = function()
         ForceHakiArms()
         print("✅ Haki đã bật")
@@ -350,7 +359,7 @@ settingGroup:AddSlider({
 })
 
 settingGroup:AddSlider({
-    Title = "🗻 Độ cao bay (trên đầu quái)",
+    Title = "🗻 Độ cao bay",
     Min = 8,
     Max = 20,
     Default = 12,
@@ -358,7 +367,7 @@ settingGroup:AddSlider({
 })
 
 settingGroup:AddSlider({
-    Title = "⚔️ Delay đánh (càng thấp càng nhanh)",
+    Title = "⚔️ Delay đánh",
     Min = 0.02,
     Max = 0.1,
     Default = 0.04,
@@ -366,13 +375,14 @@ settingGroup:AddSlider({
     Callback = function(v) _G.AttackDelay = v end
 })
 
+-- ==================== HIỂN THỊ UI ====================
 UI.ToggleUI()
 print("=" .. string.rep("=", 50))
-print("✅ EXPERT AUTO FARM v12.0 - FULL TÍCH HỢP!")
-print("📌 Farm Above - Bay trên đầu quái 12 studs")
-print("📌 Big Hitbox - Đánh trúng nhiều quái cùng lúc")
+print("✅ EXPERT AUTO FARM v12.0 - ĐÃ SẴN SÀNG!")
+print("📌 Farm Above - Bay trên đầu quái")
+print("📌 Big Hitbox - Đánh rộng hơn")
 print("📌 Super Bring Mob - Gom quái bán kính 200")
-print("📌 Auto Haki + Fast Attack - 25 đòn/giây")
-print("📌 Full Quest DB 1-2824 | 3 Seas")
+print("📌 Auto Haki + Fast Attack")
+print("📌 Full Quest DB 1-2824")
 print("📌 Bấm 'BẬT AUTO FARM' để bắt đầu")
-print("=" .. string.rep("=", 50)) 
+print("=" .. string.rep("=", 50))
