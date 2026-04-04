@@ -3,7 +3,7 @@ local UI = loadstring(game:HttpGet("https://raw.githubusercontent.com/phamquocho
 
 local window = UI:CreateWindow({
     Title = "Apple Hub Premium",
-    Subtitle = "Auto Farm | by Quoc Hoa",
+    Subtitle = "by Quoc Hoa",
     Image = "rbxassetid://76048047842530"
 })
 
@@ -12,77 +12,73 @@ local farmTab = window:AddTab("🌾 Farming")
 local masteryTab = window:AddTab("🔰 Mastery")
 local settingTab = window:AddTab("⚙️ Settings")
 
--- ==================== GROUP: SELECT METHOD FARM ====================
-local methodGroup = farmTab:AddLeftGroupbox("📋 Select Method Farm")
-
--- Biến trạng thái
+-- ==================== BIẾN TRẠNG THÁI ====================
 _G.DistanceFarm = false
 _G.Aura = false
 _G.IgnoreKatakuri = false
 _G.HopFindKatakuri = false
 _G.AutoQuest = false
 _G.StartFarm = false
+_G.MasteryFarm = false
+_G.MasteryFruit = false
 
--- Nút Distance Farm (Toggle)
-methodGroup:AddToggle({
+-- ==================== GROUP: SELECT METHOD FARM ====================
+local methodGroup = farmTab:AddLeftGroupbox("📋 Select Method Farm")
+
+-- Nút Distance Farm
+methodGroup:AddButton({
     Title = "📏 Distance Farm",
-    Default = false,
-    Callback = function(value)
-        _G.DistanceFarm = value
-        print("[TEST] Distance Farm:", value and "✅ BẬT" or "❌ TẮT")
+    Callback = function()
+        _G.DistanceFarm = not _G.DistanceFarm
+        print("[Distance Farm]:", _G.DistanceFarm and "✅ BẬT" or "❌ TẮT")
     end
 })
 
--- Nút Aura (Toggle)
-methodGroup:AddToggle({
+-- Nút Aura
+methodGroup:AddButton({
     Title = "✨ Aura",
-    Default = false,
-    Callback = function(value)
-        _G.Aura = value
-        print("[TEST] Aura:", value and "✅ BẬT" or "❌ TẮT")
+    Callback = function()
+        _G.Aura = not _G.Aura
+        print("[Aura]:", _G.Aura and "✅ BẬT" or "❌ TẮT")
     end
 })
 
--- Nút Ignore Attack Katakuri (Toggle)
-methodGroup:AddToggle({
+-- Nút Ignore Attack Katakuri
+methodGroup:AddButton({
     Title = "🚫 Ignore Attack Katakuri",
-    Default = false,
-    Callback = function(value)
-        _G.IgnoreKatakuri = value
-        print("[TEST] Ignore Attack Katakuri:", value and "✅ BẬT" or "❌ TẮT")
+    Callback = function()
+        _G.IgnoreKatakuri = not _G.IgnoreKatakuri
+        print("[Ignore Attack Katakuri]:", _G.IgnoreKatakuri and "✅ BẬT" or "❌ TẮT")
     end
 })
 
--- Nút Hop Find Katakuri (Toggle)
-methodGroup:AddToggle({
+-- Nút Hop Find Katakuri
+methodGroup:AddButton({
     Title = "🔄 Hop Find Katakuri",
-    Default = false,
-    Callback = function(value)
-        _G.HopFindKatakuri = value
-        print("[TEST] Hop Find Katakuri:", value and "✅ BẬT" or "❌ TẮT")
+    Callback = function()
+        _G.HopFindKatakuri = not _G.HopFindKatakuri
+        print("[Hop Find Katakuri]:", _G.HopFindKatakuri and "✅ BẬT" or "❌ TẮT")
     end
 })
 
--- Nút Auto Quest (Toggle)
-methodGroup:AddToggle({
+-- Nút Auto Quest
+methodGroup:AddButton({
     Title = "📜 Auto Quest [Katakuri/Bone/Tyrant]",
-    Default = false,
-    Callback = function(value)
-        _G.AutoQuest = value
-        print("[TEST] Auto Quest:", value and "✅ BẬT" or "❌ TẮT")
+    Callback = function()
+        _G.AutoQuest = not _G.AutoQuest
+        print("[Auto Quest]:", _G.AutoQuest and "✅ BẬT" or "❌ TẮT")
     end
 })
 
--- Nút Start Farm (Toggle)
-methodGroup:AddToggle({
+-- Nút Start Farm
+methodGroup:AddButton({
     Title = "▶️ Start Farm",
-    Default = false,
-    Callback = function(value)
-        _G.StartFarm = value
-        if value then
-            print("[TEST] ✅ START FARM - ĐÃ BẬT!")
+    Callback = function()
+        _G.StartFarm = not _G.StartFarm
+        if _G.StartFarm then
+            print("[Start Farm]: ✅ ĐÃ BẬT - Bắt đầu farm!")
         else
-            print("[TEST] ❌ STOP FARM - ĐÃ TẮT!")
+            print("[Start Farm]: ❌ ĐÃ TẮT - Dừng farm!")
         end
     end
 })
@@ -90,26 +86,21 @@ methodGroup:AddToggle({
 -- ==================== GROUP: MASTERY FARM ====================
 local masteryGroup = masteryTab:AddLeftGroupbox("🔰 Mastery Farm")
 
-_G.MasteryFarm = false
-_G.MasteryFruit = false
-
--- Nút Mastery Farm (Toggle)
-masteryGroup:AddToggle({
+-- Nút Mastery Farm
+masteryGroup:AddButton({
     Title = "⚔️ Mastery Farm",
-    Default = false,
-    Callback = function(value)
-        _G.MasteryFarm = value
-        print("[TEST] Mastery Farm:", value and "✅ BẬT" or "❌ TẮT")
+    Callback = function()
+        _G.MasteryFarm = not _G.MasteryFarm
+        print("[Mastery Farm]:", _G.MasteryFarm and "✅ BẬT" or "❌ TẮT")
     end
 })
 
--- Nút Mastery Fruit (Toggle)
-masteryGroup:AddToggle({
+-- Nút Mastery Fruit
+masteryGroup:AddButton({
     Title = "🍎 Mastery Fruit",
-    Default = false,
-    Callback = function(value)
-        _G.MasteryFruit = value
-        print("[TEST] Mastery Fruit:", value and "✅ BẬT" or "❌ TẮT")
+    Callback = function()
+        _G.MasteryFruit = not _G.MasteryFruit
+        print("[Mastery Fruit]:", _G.MasteryFruit and "✅ BẬT" or "❌ TẮT")
     end
 })
 
@@ -124,7 +115,7 @@ settingGroup:AddSlider({
     Default = 350,
     Callback = function(v)
         _G.TweenSpeed = v
-        print("[TEST] Tốc độ bay:", v)
+        print("[Tốc độ bay]:", v)
     end
 })
 
@@ -137,7 +128,7 @@ settingGroup:AddSlider({
     Decimal = true,
     Callback = function(v)
         _G.AttackDelay = v
-        print("[TEST] Delay đánh:", v)
+        print("[Delay đánh]:", v)
     end
 })
 
@@ -149,7 +140,7 @@ settingGroup:AddSlider({
     Default = 10,
     Callback = function(v)
         _G.FlyHeight = v
-        print("[TEST] Độ cao bay:", v)
+        print("[Độ cao bay]:", v)
     end
 })
 
@@ -165,7 +156,7 @@ settingGroup:AddButton({
         _G.StartFarm = false
         _G.MasteryFarm = false
         _G.MasteryFruit = false
-        print("[TEST] 🔄 ĐÃ RESET TẤT CẢ!")
+        print("[RESET]: 🔄 Đã reset tất cả về TẮT!")
     end
 })
 
@@ -173,7 +164,7 @@ settingGroup:AddButton({
 UI.ToggleUI()
 print("=" .. string.rep("=", 50))
 print("✅ APPLE HUB PREMIUM - UI ĐÃ SẴN SÀNG!")
-print("📌 Các nút toggle có chức năng bật/tắt test")
 print("📌 Bấm F9 để xem console in ra trạng thái")
-print("📌 Slider có thể kéo để test")
-print("=" .. string.rep("=", 50))
+print("📌 Mỗi lần bấm nút sẽ bật/tắt chức năng")
+print("📌 Slider có thể kéo để điều chỉnh")
+print("=" .. string.rep("=", 50)) 
