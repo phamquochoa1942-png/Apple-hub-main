@@ -15,7 +15,7 @@ local settingTab = window:AddTab("⚙️ Settings")
 -- ==================== GROUP: SELECT METHOD FARM ====================
 local methodGroup = farmTab:AddLeftGroupbox("📋 Select Method Farm")
 
--- Biến trạng thái (không logic, chỉ để hiển thị)
+-- Biến trạng thái
 _G.DistanceFarm = false
 _G.Aura = false
 _G.IgnoreKatakuri = false
@@ -23,57 +23,63 @@ _G.HopFindKatakuri = false
 _G.AutoQuest = false
 _G.StartFarm = false
 
--- Nút Distance Farm
-methodGroup:AddButton({
+-- ✅ Nút Distance Farm (Toggle dạng checkbox)
+methodGroup:AddToggle({
     Title = "📏 Distance Farm",
-    Callback = function()
-        _G.DistanceFarm = not _G.DistanceFarm
-        print("📏 Distance Farm:", _G.DistanceFarm and "BẬT" or "TẮT")
+    Default = false,
+    Callback = function(value)
+        _G.DistanceFarm = value
+        print("📏 Distance Farm:", value and "BẬT" or "TẮT")
     end
 })
 
--- Nút Aura
-methodGroup:AddButton({
+-- ✅ Nút Aura (Toggle dạng checkbox)
+methodGroup:AddToggle({
     Title = "✨ Aura",
-    Callback = function()
-        _G.Aura = not _G.Aura
-        print("✨ Aura:", _G.Aura and "BẬT" or "TẮT")
+    Default = false,
+    Callback = function(value)
+        _G.Aura = value
+        print("✨ Aura:", value and "BẬT" or "TẮT")
     end
 })
 
--- Nút Ignore Attack Katakuri
-methodGroup:AddButton({
+-- ✅ Nút Ignore Attack Katakuri
+methodGroup:AddToggle({
     Title = "🚫 Ignore Attack Katakuri",
-    Callback = function()
-        _G.IgnoreKatakuri = not _G.IgnoreKatakuri
-        print("🚫 Ignore Attack Katakuri:", _G.IgnoreKatakuri and "BẬT" or "TẮT")
+    Default = false,
+    Callback = function(value)
+        _G.IgnoreKatakuri = value
+        print("🚫 Ignore Attack Katakuri:", value and "BẬT" or "TẮT")
     end
 })
 
--- Nút Hop Find Katakuri
-methodGroup:AddButton({
+-- ✅ Nút Hop Find Katakuri
+methodGroup:AddToggle({
     Title = "🔄 Hop Find Katakuri",
-    Callback = function()
-        _G.HopFindKatakuri = not _G.HopFindKatakuri
-        print("🔄 Hop Find Katakuri:", _G.HopFindKatakuri and "BẬT" or "TẮT")
+    Default = false,
+    Callback = function(value)
+        _G.HopFindKatakuri = value
+        print("🔄 Hop Find Katakuri:", value and "BẬT" or "TẮT")
     end
 })
 
--- Nút Auto Quest
-methodGroup:AddButton({
+-- ✅ Nút Auto Quest
+methodGroup:AddToggle({
     Title = "📜 Auto Quest [Katakuri/Bone/Tyrant]",
-    Callback = function()
-        _G.AutoQuest = not _G.AutoQuest
-        print("📜 Auto Quest:", _G.AutoQuest and "BẬT" or "TẮT")
+    Default = false,
+    Callback = function(value)
+        _G.AutoQuest = value
+        print("📜 Auto Quest:", value and "BẬT" or "TẮT")
     end
 })
 
--- Nút Start Farm
-methodGroup:AddButton({
+-- ✅ Nút Start Farm (Toggle quan trọng)
+methodGroup:AddToggle({
     Title = "▶️ Start Farm",
-    Callback = function()
-        _G.StartFarm = not _G.StartFarm
-        if _G.StartFarm then
+    Default = false,
+    Callback = function(value)
+        _G.StartFarm = value
+        if value then
             print("✅ START FARM - Bắt đầu farm!")
         else
             print("⏸️ STOP FARM - Dừng farm!")
@@ -87,21 +93,23 @@ local masteryGroup = masteryTab:AddLeftGroupbox("🔰 Mastery Farm")
 _G.MasteryFarm = false
 _G.MasteryFruit = false
 
--- Nút Mastery Farm
-masteryGroup:AddButton({
+-- ✅ Nút Mastery Farm
+masteryGroup:AddToggle({
     Title = "⚔️ Mastery Farm",
-    Callback = function()
-        _G.MasteryFarm = not _G.MasteryFarm
-        print("⚔️ Mastery Farm:", _G.MasteryFarm and "BẬT" or "TẮT")
+    Default = false,
+    Callback = function(value)
+        _G.MasteryFarm = value
+        print("⚔️ Mastery Farm:", value and "BẬT" or "TẮT")
     end
 })
 
--- Nút Mastery Fruit
-masteryGroup:AddButton({
+-- ✅ Nút Mastery Fruit
+masteryGroup:AddToggle({
     Title = "🍎 Mastery Fruit",
-    Callback = function()
-        _G.MasteryFruit = not _G.MasteryFruit
-        print("🍎 Mastery Fruit:", _G.MasteryFruit and "BẬT" or "TẮT")
+    Default = false,
+    Callback = function(value)
+        _G.MasteryFruit = value
+        print("🍎 Mastery Fruit:", value and "BẬT" or "TẮT")
     end
 })
 
@@ -169,6 +177,7 @@ settingGroup:AddButton({
 UI.ToggleUI()
 print("=" .. string.rep("=", 50))
 print("✅ APPLE HUB PREMIUM - UI ĐÃ SẴN SÀNG!")
-print("📌 Các tab: Farming | Mastery | Settings")
-print("📌 Bấm nút Start Farm để bắt đầu (sẽ thêm logic sau)")
+print("📌 Các nút đều là TOGGLE (checkbox) như trong ảnh")
+print("📌 Bấm vào ô vuông để bật/tắt từng chức năng")
+print("📌 Bật 'Start Farm' để bắt đầu farm")
 print("=" .. string.rep("=", 50)) 
