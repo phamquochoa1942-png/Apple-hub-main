@@ -446,16 +446,16 @@ print("📌 Bấm 'BẬT AUTO FARM' để bắt đầu")
 print("=" .. string.rep("=", 50)) 
 end) -- đóng cái pcall ở đâu file lại
 
-if not succsess then
+if not success then
   -- nếu lỗi nó sẽ in ra thông báo cực chi tiết
   print("==================")
   warn("apple hub phát hiện lỗi!")
-  warn("vị trí/tự do: " .. tostring(erro Message))
+  warn("loi: " .. tostring(errorMessage)
   print("admin quoc hoa hãy kiểm tra code.")
   print("===================")
   else
     -- nếu kh lỗi, nó sẽ báo mượt
     print("apple hub v5: code chạy mượt, không lỗi cú pháp")
- end)
+ end
   
    
