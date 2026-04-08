@@ -1,15 +1,13 @@
--- =========================================
--- ✅ BLOX FRUITS AUTO FARM - FIXED & OPTIMIZED
--- 🛠 Fix lỗi: EasingStyle typo, Velocity deprecated, QuestDB readable
--- 📱 Mobile Safe | ✅ pcall Wrapper | ✅ TweenService
--- ==========================================
+local success, errorMessage = 
+pcall(function()
+   print("apple hub: dang bat dau kiem tra code...")
 
 -- Gọi UI Library
 local UI = loadstring(game:HttpGet("https://raw.githubusercontent.com/phamquochoa1942-png/Newuiapplehub/refs/heads/main/New%20apple%20hub"))()
 
 local window = UI:CreateWindow({
     Title = "Apple Hub Premium",
-    Subtitle = "Auto Farm 1-2800 | by Quoc Hoa",
+    Subtitle = "by Quoc Hoa",
     Image = "rbxassetid://76048047842530"
 })
 
@@ -30,10 +28,10 @@ local root = character:WaitForChild("HumanoidRootPart")
 local humanoid = character:WaitForChild("Humanoid")
 
 -- ==================== BIẾN TOÀN CỤC ====================
-_G.AutoFarm = false
+_G.AutoFarm = true
 _G.BringMob = true
 _G.AutoHaki = true
-_G.TweenSpeed = 60
+_G.TweenSpeed = 150
 _G.AttackDelay = 0.3
 _G.FlyHeight = 9
 _G.GatherRadius = 22
@@ -446,3 +444,18 @@ print("📌 State Machine: IDLE → GET_QUEST → MOVE_TO_FARM → FARMING")
 print("📌 Tối ưu cho mobile, chống lag, chống rơi")
 print("📌 Bấm 'BẬT AUTO FARM' để bắt đầu")
 print("=" .. string.rep("=", 50)) 
+end) -- đóng cái pcall ở đâu file lại
+
+if not succsess then
+  -- nếu lỗi nó sẽ in ra thông báo cực chi tiết
+  print("==================")
+  warn("apple hub phát hiện lỗi!")
+  warn("vị trí/tự do: " .. tostring(erro Message))
+  print("admin quoc hoa hãy kiểm tra code.")
+  print("===================")
+  else
+    -- nếu kh lỗi, nó sẽ báo mượt
+    print("apple hub v5: code chạy mượt, không lỗi cú pháp")
+ end)
+  
+   
