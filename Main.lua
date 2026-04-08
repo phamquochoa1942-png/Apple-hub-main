@@ -1,4 +1,4 @@
--- ==========================================
+-- =========================================
 -- ✅ BLOX FRUITS AUTO FARM - FIXED & OPTIMIZED
 -- 🛠 Fix lỗi: EasingStyle typo, Velocity deprecated, QuestDB readable
 -- 📱 Mobile Safe | ✅ pcall Wrapper | ✅ TweenService
