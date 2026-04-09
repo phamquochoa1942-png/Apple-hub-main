@@ -1,6 +1,6 @@
 local success, err = 
 pcall(function()
-
+print("script chạy tốt")
 -- Gọi UI Library
 local UI = loadstring(game:HttpGet("https://raw.githubusercontent.com/phamquochoa1942-png/Newuiapplehub/refs/heads/main/New%20apple%20hub"))()
 
