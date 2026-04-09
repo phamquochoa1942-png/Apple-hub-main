@@ -27,7 +27,7 @@ local root = character:WaitForChild("HumanoidRootPart")
 local humanoid = character:WaitForChild("Humanoid")
 
 -- ==================== BIẾN TOÀN CỤC ====================
-_G.AutoFarm = false
+_G.AutoFarm = true
 _G.BringMob = true
 _G.AutoHaki = true
 _G.TweenSpeed = 60
